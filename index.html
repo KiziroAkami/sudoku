@@ -64,12 +64,10 @@
   --pencil:#1C5F86;
   --note:#78858E;
   --accent:#1C5F86;
-  --accent-soft:#DCE8F0;
   --bad:#A6392C;
   --bad-bg:#F0D9D5;
   --muted:#69757D;
   --setup:#7A5B1E;
-  --setup-soft:#EFE4CB;
   --shadow:0 1px 2px rgba(24,40,54,.07), 0 8px 24px -14px rgba(24,40,54,.28);
 }
 @media (prefers-color-scheme: dark){
@@ -88,12 +86,10 @@
     --pencil:#6FC1EA;
     --note:#818E98;
     --accent:#6FC1EA;
-    --accent-soft:#1E2C35;
     --bad:#E5796A;
     --bad-bg:#3B211D;
     --muted:#8B98A1;
     --setup:#D9B368;
-    --setup-soft:#302716;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.8);
   }
 }
@@ -112,12 +108,10 @@
   --pencil:#6FC1EA;
   --note:#818E98;
   --accent:#6FC1EA;
-  --accent-soft:#1E2C35;
   --bad:#E5796A;
   --bad-bg:#3B211D;
   --muted:#8B98A1;
   --setup:#D9B368;
-  --setup-soft:#302716;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.8);
 }
 
@@ -255,14 +249,13 @@ select.btn{padding-right:8px}
 .label{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 
 .prov{display:flex;flex-wrap:wrap;gap:6px}
+.prov:empty{display:none}
 .chip{
   font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
   padding:4px 8px;border-radius:3px;border:1px solid var(--edge);
   background:var(--panel);color:var(--muted);
 }
-.chip.mark{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
 .chip.warn{background:var(--bad-bg);border-color:transparent;color:var(--bad)}
-.chip.edit{background:var(--setup-soft);border-color:transparent;color:var(--setup)}
 
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .key{
@@ -628,12 +621,8 @@ function render(){
 function renderProvenance(badCount){
   const p=$("#prov");
   const chips=[];
-  if(isSetup()){
-    chips.push(['edit','Editing clues']);
-    if(badCount) chips.push(['warn', badCount+' in conflict']);
-  } else {
-    chips.push([state.source==='custom'?'mark':'', state.source==='custom'?'Your puzzle':state.source]);
-  }
+  /* Warnings only. A label saying what you are already looking at is not news. */
+  if(isSetup() && badCount) chips.push(['warn', badCount+' in conflict']);
   p.innerHTML = chips.map(([cls,txt])=>'<span class="chip '+cls+'">'+txt+'</span>').join('');
 }
 
@@ -764,6 +753,9 @@ function enterSetup(){
     revealed:state.revealed.slice(), solution:state.solution.slice(),
     solCount:state.solCount, source:state.source, givens:state.givens, elapsed:state.elapsed, solved:state.solved
   };
+  state.puzzle.fill(0); state.values.fill(0); state.notes.fill(0); state.revealed.fill(0);
+  state.solution.fill(0); state.solCount=1; state.givens=0;
+  state.selected=0;
   state.mode="setup"; state.solved=false; state.history.length=0;
   page.dataset.mode="setup";
   hideVeil(); clearFlash();

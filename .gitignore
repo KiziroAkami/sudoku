@@ -1,0 +1,3 @@
+# OCR development: working code plus a test corpus of personal screenshots.
+# Kept out of git deliberately, since the corpus is Kiziro's own phone captures.
+.dev-ocr/

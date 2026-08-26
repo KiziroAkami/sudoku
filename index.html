@@ -68,6 +68,8 @@
   --bad-bg:#F0D9D5;
   --muted:#69757D;
   --setup:#7A5B1E;
+  --hint-soft:#DCE8F0;
+  --hint-strong:#A8CDE4;
   --shadow:0 1px 2px rgba(24,40,54,.07), 0 8px 24px -14px rgba(24,40,54,.28);
 }
 @media (prefers-color-scheme: dark){
@@ -90,6 +92,8 @@
     --bad-bg:#3B211D;
     --muted:#8B98A1;
     --setup:#D9B368;
+    --hint-soft:#1E2C35;
+    --hint-strong:#2E4A58;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.8);
   }
 }
@@ -112,6 +116,8 @@
   --bad-bg:#3B211D;
   --muted:#8B98A1;
   --setup:#D9B368;
+  --hint-soft:#1E2C35;
+  --hint-strong:#2E4A58;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.8);
 }
 
@@ -233,6 +239,13 @@ select.btn{padding-right:8px}
 .cell.sel::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none}
 .page[data-mode="setup"] .cell.sel::after{border-color:var(--setup)}
 
+/* hint highlighting. Placed after .sel so an explained cell reads as explained. */
+.cell.hint-because{background:var(--hint-soft)}
+.cell.hint-elim{background:var(--bad-bg)}
+.cell.hint-target{background:var(--hint-strong)}
+.cell.hint-target::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none}
+.cell .notes b.hint-cut{color:var(--bad);text-decoration:line-through;opacity:1}
+
 .veil{
   position:absolute;inset:0;display:none;place-items:center;text-align:center;
   background:color-mix(in srgb, var(--paper) 88%, transparent);
@@ -249,6 +262,13 @@ select.btn{padding-right:8px}
 @media (min-width:920px){ .rail{max-width:none} }
 .label{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 
+.hint{border:1px solid var(--edge);border-radius:4px;background:var(--panel);padding:12px 13px}
+.hint:not(.show){display:none}
+.hint-kind{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
+.hint.dead .hint-kind{color:var(--muted)}
+.hint-text{margin:0;font-size:13.5px;line-height:1.55}
+.hint-actions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.hint-actions .btn{flex:1 1 auto}
 .prov{display:flex;flex-wrap:wrap;gap:6px}
 .prov:empty{display:none}
 .chip{
@@ -337,6 +357,15 @@ textarea#io::placeholder{color:var(--muted)}
     </div>
 
     <aside class="rail">
+      <div class="hint" id="hint">
+        <div class="hint-kind" id="hint-kind"></div>
+        <p class="hint-text" id="hint-text"></p>
+        <div class="hint-actions">
+          <button class="btn on" id="hint-apply">Place it</button>
+          <button class="btn ghost" id="hint-dismiss">Dismiss</button>
+        </div>
+      </div>
+
       <div class="prov" id="prov"></div>
 
       <div>
@@ -361,7 +390,7 @@ textarea#io::placeholder{color:var(--muted)}
           <button class="btn" id="t-fill">Fill notes</button>
           <button class="btn" id="t-erase">Erase</button>
           <button class="btn" id="t-undo">Undo</button>
-          <button class="btn" id="t-hint">Reveal cell</button>
+          <button class="btn" id="t-hint">Hint</button>
           <button class="btn" id="t-check">Check</button>
         </div>
       </div>
@@ -477,6 +506,270 @@ function countSolutions(src, limit){
   return count;
 }
 
+/* ============================================================
+   Hint engine: solves the way a person does, so it can explain.
+
+   The brute-force solver elsewhere finds AN answer by trying digits and
+   undoing dead ends. Its reason for any cell is "everything else failed",
+   which is useless to a player. This one applies named techniques in
+   ascending difficulty and returns the first that fires, so the hint is
+   always the easiest move available.
+   ============================================================ */
+
+const HINT_ROWS = [], HINT_COLS = [], HINT_BOXES = [], HINT_UNITS = [], HINT_PEERS = [];
+(function buildGeometry(){
+  for(let r=0;r<9;r++) HINT_ROWS.push(Array.from({length:9},(_,k)=>r*9+k));
+  for(let c=0;c<9;c++) HINT_COLS.push(Array.from({length:9},(_,k)=>k*9+c));
+  for(let b=0;b<9;b++){
+    const br=((b/3)|0)*3, bc=(b%3)*3;
+    HINT_BOXES.push(Array.from({length:9},(_,k)=>(br+((k/3)|0))*9 + bc + (k%3)));
+  }
+  HINT_ROWS.forEach((cells,i)=>HINT_UNITS.push({type:"row", index:i, cells}));
+  HINT_COLS.forEach((cells,i)=>HINT_UNITS.push({type:"column", index:i, cells}));
+  HINT_BOXES.forEach((cells,i)=>HINT_UNITS.push({type:"box", index:i, cells}));
+  for(let i=0;i<81;i++){
+    const s=new Set([...HINT_ROWS[(i/9)|0], ...HINT_COLS[i%9], ...HINT_BOXES[hBox(i)]]);
+    s.delete(i);
+    HINT_PEERS.push(Array.from(s));
+  }
+})();
+
+function hRow(i){ return (i/9)|0; }
+function hCol(i){ return i%9; }
+function hBox(i){ return ((((i/9)|0)/3)|0)*3 + (((i%9)/3)|0); }
+function hName(i){ return "R"+(hRow(i)+1)+"C"+(hCol(i)+1); }
+function hBits(m){ const o=[]; for(let d=1;d<=9;d++) if(m & (1<<(d-1))) o.push(d); return o; }
+function hPop(m){ let n=0; while(m){ m&=m-1; n++; } return n; }
+function hList(a){ return a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" and "+a[a.length-1]; }
+function hCombos(arr, n){
+  const out=[];
+  (function go(start, cur){
+    if(cur.length===n){ out.push(cur.slice()); return; }
+    for(let i=start;i<arr.length;i++){ cur.push(arr[i]); go(i+1, cur); cur.pop(); }
+  })(0, []);
+  return out;
+}
+
+function hintCandidates(grid){
+  const cand = new Int16Array(81);
+  for(let i=0;i<81;i++){
+    if(grid[i]){ cand[i]=0; continue; }
+    let used=0;
+    for(const p of HINT_PEERS[i]){ const d=grid[p]; if(d) used |= 1<<(d-1); }
+    cand[i] = ~used & 0x1FF;
+  }
+  return cand;
+}
+
+/* ---- 1. Naked single: one candidate left in a cell ---- */
+function tNakedSingle(grid, cand){
+  for(let i=0;i<81;i++){
+    if(grid[i] || hPop(cand[i])!==1) continue;
+    const d = hBits(cand[i])[0];
+    const because = HINT_PEERS[i].filter(p => grid[p] && grid[p]!==d);
+    return {
+      kind:"naked-single", label:"Naked single",
+      text: hName(i)+" has only one candidate left. Every other digit already appears in its row, column or box, so it must be "+d+".",
+      place:{cell:i, digit:d}, eliminations:[], because, unit:null
+    };
+  }
+  return null;
+}
+
+/* ---- 2. Hidden single: a digit fits only one cell of a unit ---- */
+function tHiddenSingle(grid, cand){
+  for(const u of HINT_UNITS){
+    for(let d=1;d<=9;d++){
+      const m=1<<(d-1);
+      if(u.cells.some(i => grid[i]===d)) continue;
+      const spots = u.cells.filter(i => !grid[i] && (cand[i] & m));
+      if(spots.length!==1) continue;
+      const i = spots[0];
+      if(hPop(cand[i])===1) continue;              // that is a naked single, already handled
+      const because = new Set();
+      for(const x of u.cells){
+        if(x===i || grid[x]) continue;
+        for(const p of HINT_PEERS[x]) if(grid[p]===d) because.add(p);
+      }
+      return {
+        kind:"hidden-single", label:"Hidden single",
+        text: d+" has only one place left in this "+u.type+". Every other empty cell there is blocked by a "+d+" elsewhere, so "+hName(i)+" must be "+d+".",
+        place:{cell:i, digit:d}, eliminations:[], because:Array.from(because), unit:u
+      };
+    }
+  }
+  return null;
+}
+
+/* ---- 3. Pointing pair/triple: a digit confined to one line within a box ---- */
+function tPointing(grid, cand){
+  for(let b=0;b<9;b++){
+    for(let d=1;d<=9;d++){
+      const m=1<<(d-1);
+      const spots = HINT_BOXES[b].filter(i => !grid[i] && (cand[i] & m));
+      if(spots.length<2 || spots.length>3) continue;
+      for(const axis of ["row","column"]){
+        const key = axis==="row" ? hRow : hCol;
+        const line = key(spots[0]);
+        if(!spots.every(i => key(i)===line)) continue;
+        const lineCells = axis==="row" ? HINT_ROWS[line] : HINT_COLS[line];
+        const elim = lineCells.filter(i => hBox(i)!==b && !grid[i] && (cand[i] & m));
+        if(!elim.length) continue;
+        return {
+          kind:"pointing", label:"Pointing "+(spots.length===2?"pair":"triple"),
+          text:"Inside this box, "+d+" can only go in one "+axis+". Wherever it lands it is in that "+axis+", so "+d+" is ruled out of the rest of the "+axis+".",
+          place:null, eliminations: elim.map(i=>({cell:i, digit:d})),
+          because: spots, unit:{type:axis, index:line, cells:lineCells}
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/* ---- 4. Box line reduction: a digit confined to one box within a line ---- */
+function tBoxLine(grid, cand){
+  for(const u of HINT_UNITS){
+    if(u.type==="box") continue;
+    for(let d=1;d<=9;d++){
+      const m=1<<(d-1);
+      const spots = u.cells.filter(i => !grid[i] && (cand[i] & m));
+      if(spots.length<2 || spots.length>3) continue;
+      const b = hBox(spots[0]);
+      if(!spots.every(i => hBox(i)===b)) continue;
+      const elim = HINT_BOXES[b].filter(i => u.cells.indexOf(i)<0 && !grid[i] && (cand[i] & m));
+      if(!elim.length) continue;
+      return {
+        kind:"box-line", label:"Box line reduction",
+        text:"In this "+u.type+", "+d+" can only go inside one box. That box must use its "+d+" there, so "+d+" is ruled out of the rest of the box.",
+        place:null, eliminations: elim.map(i=>({cell:i, digit:d})),
+        because: spots, unit:u
+      };
+    }
+  }
+  return null;
+}
+
+/* ---- 5. Naked pair/triple: n cells sharing exactly n candidates ---- */
+function tNakedSubset(grid, cand, n){
+  for(const u of HINT_UNITS){
+    const empties = u.cells.filter(i => !grid[i] && hPop(cand[i])>=2 && hPop(cand[i])<=n);
+    if(empties.length < n) continue;
+    for(const combo of hCombos(empties, n)){
+      let union=0;
+      for(const i of combo) union |= cand[i];
+      if(hPop(union)!==n) continue;
+      const elim=[];
+      for(const i of u.cells){
+        if(grid[i] || combo.indexOf(i)>=0) continue;
+        for(const d of hBits(cand[i] & union)) elim.push({cell:i, digit:d});
+      }
+      if(!elim.length) continue;
+      const ds = hList(hBits(union));
+      return {
+        kind:"naked-subset-"+n, label:"Naked "+(n===2?"pair":"triple"),
+        text:"These "+n+" cells hold only "+ds+" between them. They will use all of those up, so nothing else in this "+u.type+" can be "+ds+".",
+        place:null, eliminations:elim, because:combo, unit:u
+      };
+    }
+  }
+  return null;
+}
+
+/* ---- 6. Hidden pair/triple: n digits confined to exactly n cells ---- */
+function tHiddenSubset(grid, cand, n){
+  for(const u of HINT_UNITS){
+    const empties = u.cells.filter(i => !grid[i]);
+    const digits=[];
+    for(let d=1;d<=9;d++){
+      const m=1<<(d-1);
+      const spots = empties.filter(i => cand[i] & m);
+      if(spots.length>=2 && spots.length<=n) digits.push(d);
+    }
+    if(digits.length < n) continue;
+    for(const combo of hCombos(digits, n)){
+      let mask=0;
+      for(const d of combo) mask |= 1<<(d-1);
+      const cells = empties.filter(i => cand[i] & mask);
+      if(cells.length!==n) continue;
+      const elim=[];
+      for(const i of cells){
+        for(const d of hBits(cand[i] & ~mask)) elim.push({cell:i, digit:d});
+      }
+      if(!elim.length) continue;
+      return {
+        kind:"hidden-subset-"+n, label:"Hidden "+(n===2?"pair":"triple"),
+        text:hList(combo)+" have nowhere else to go in this "+u.type+" but these "+n+" cells. Between them they use every one, so those cells cannot be anything else.",
+        place:null, eliminations:elim, because:cells, unit:u
+      };
+    }
+  }
+  return null;
+}
+
+/* ---- 7. X-Wing: a digit locked to the same two lines in two crossing units ---- */
+function tXWing(grid, cand){
+  for(let d=1;d<=9;d++){
+    const m=1<<(d-1);
+    const shapes = [[HINT_ROWS, HINT_COLS, "row", "column", hCol],
+                    [HINT_COLS, HINT_ROWS, "column", "row", hRow]];
+    for(const [lines, cross, axis, crossAxis, keyOf] of shapes){
+      const twos=[];
+      for(let a=0;a<9;a++){
+        const spots = lines[a].filter(i => !grid[i] && (cand[i] & m));
+        if(spots.length===2) twos.push(spots);
+      }
+      for(let x=0;x<twos.length;x++) for(let y=x+1;y<twos.length;y++){
+        const A=twos[x], B=twos[y];
+        const ka=A.map(keyOf).sort((p,q)=>p-q), kb=B.map(keyOf).sort((p,q)=>p-q);
+        if(ka[0]!==kb[0] || ka[1]!==kb[1]) continue;
+        const elim=[];
+        for(const k of ka){
+          for(const i of cross[k]){
+            if(grid[i] || !(cand[i] & m)) continue;
+            if(A.indexOf(i)>=0 || B.indexOf(i)>=0) continue;
+            elim.push({cell:i, digit:d});
+          }
+        }
+        if(!elim.length) continue;
+        return {
+          kind:"x-wing", label:"X-Wing",
+          text:"In these two "+axis+"s, "+d+" can only sit in the same two "+crossAxis+"s. Those four cells form a rectangle, and whichever way it falls both "+crossAxis+"s get their "+d+" from it, so "+d+" is ruled out of the rest of them.",
+          place:null, eliminations:elim, because:A.concat(B), unit:null
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/* Easiest first. The order IS the difficulty ranking, so the first hit is
+   always the simplest move available on the board. */
+const HINT_TECHNIQUES = [
+  (g,c)=>tNakedSingle(g,c),
+  (g,c)=>tHiddenSingle(g,c),
+  (g,c)=>tPointing(g,c),
+  (g,c)=>tBoxLine(g,c),
+  (g,c)=>tNakedSubset(g,c,2),
+  (g,c)=>tHiddenSubset(g,c,2),
+  (g,c)=>tNakedSubset(g,c,3),
+  (g,c)=>tHiddenSubset(g,c,3),
+  (g,c)=>tXWing(g,c),
+];
+
+/* `cand` MUST be carried across calls by the caller. Recomputing it from the
+   grid every time discards the eliminations the previous hints made, so an
+   elimination technique re-derives the same deduction forever and the chain
+   never reaches a placement. Cost a debugging round on 2026-08-26. */
+function findHint(grid, cand){
+  if(!cand) cand = hintCandidates(grid);
+  for(const t of HINT_TECHNIQUES){
+    const h = t(grid, cand);
+    if(h) return h;
+  }
+  return null;
+}
+
 /* ---------- generator ---------- */
 function fullGrid(){
   const g=new Int8Array(81), R=new Int16Array(9), C=new Int16Array(9), B=new Int16Array(9);
@@ -495,7 +788,36 @@ function fullGrid(){
   return g;
 }
 const TARGET = { easy:44, medium:34, hard:29, expert:25 };
+/* Every dealt puzzle must be solvable by the hint techniques, so the app can
+   always explain the next move on its own boards. Costs a couple of retries at
+   Expert and nothing at all below that. */
+function hintSolvable(puzzle){
+  const grid = puzzle.slice();
+  let cand = hintCandidates(grid), guard = 0;
+  while(guard++ < 400){
+    const h = findHint(grid, cand);
+    if(!h) break;
+    if(h.place){
+      const i=h.place.cell, d=h.place.digit, m=1<<(d-1);
+      grid[i]=d; cand[i]=0;
+      for(const p of peers[i]) cand[p] &= ~m;
+    } else if(h.eliminations.length){
+      for(const e of h.eliminations) cand[e.cell] &= ~(1<<(e.digit-1));
+    } else break;
+  }
+  for(let i=0;i<81;i++) if(!grid[i]) return false;
+  return true;
+}
+
 function makePuzzle(level){
+  for(let attempt=0; attempt<40; attempt++){
+    const p = digPuzzle(level);
+    if(hintSolvable(p.puzzle)) return p;
+  }
+  return digPuzzle(level);
+}
+
+function digPuzzle(level){
   const solution = fullGrid(), puzzle = solution.slice();
   const order = shuffle(Array.from({length:81},(_,i)=>i));
   let givens = 81, target = TARGET[level] || 34;
@@ -518,6 +840,7 @@ const state = {
   history:[]
 };
 let wrongFlash = new Set(), flashTimer = null, setupBackup = null;
+let hintCand = null, currentHint = null, hintApply = null;
 
 /* ---------- DOM ---------- */
 const boardEl = $("#board");
@@ -574,14 +897,18 @@ function render(){
   const sel = state.selected;
   const selRow=(sel/9)|0, selCol=sel%9, selBox=boxOf(sel);
   const selDigit = at(sel);
+  const hl = currentHint ? hintHighlight(currentHint) : null;
 
   for(let i=0;i<81;i++){
     const el=cellEls[i], r=(i/9)|0, c=i%9;
     const d = at(i);
     el.classList.toggle("given", setup ? !!d : !!state.puzzle[i]);
     el.classList.toggle("revealed", !setup && !state.puzzle[i] && !!state.revealed[i] && !!state.values[i]);
-    el.classList.toggle("house", i!==sel && (r===selRow || c===selCol || boxOf(i)===selBox));
-    el.classList.toggle("same", i!==sel && !!selDigit && d===selDigit);
+    el.classList.toggle("house", !hl && i!==sel && (r===selRow || c===selCol || boxOf(i)===selBox));
+    el.classList.toggle("same", !hl && i!==sel && !!selDigit && d===selDigit);
+    el.classList.toggle("hint-because", !!hl && hl.because.has(i));
+    el.classList.toggle("hint-elim", !!hl && hl.elim.has(i));
+    el.classList.toggle("hint-target", !!hl && hl.target.has(i));
     el.classList.toggle("bad", shown.has(i));
     el.classList.toggle("wrong", wrongFlash.has(i));
     el.classList.toggle("sel", i===sel);
@@ -592,7 +919,8 @@ function render(){
     for(let k=0;k<9;k++){
       const on = !!(nm & (1<<k));
       noteEls[i][k].classList.toggle("on", on);
-      noteEls[i][k].classList.toggle("hit", on && selDigit === k+1);
+      noteEls[i][k].classList.toggle("hit", !hl && on && selDigit === k+1);
+      noteEls[i][k].classList.toggle("hint-cut", !!hl && hl.elim.has(i) && hl.elim.get(i).has(k+1));
     }
     el.setAttribute("aria-label",
       "Row "+(r+1)+" column "+(c+1)+(d ? ", "+d+((setup||state.puzzle[i])?" clue":"") : (nm ? ", notes "+bits(nm).join(" ") : ", empty")));
@@ -614,9 +942,7 @@ function render(){
   $("#t-undo").disabled = state.history.length===0;
   $("#cancelsetup").disabled = !setupBackup;
   const noSol = state.solCount===0;
-  $("#t-hint").disabled = noSol;
   $("#t-check").disabled = noSol;
-  $("#t-hint").title = noSol ? "This board has no completion, so there is nothing to reveal" : "";
   $("#t-check").title = noSol ? "This board has no completion, so there is nothing to check against" : "";
   renderProvenance(bad.size);
   save();
@@ -649,7 +975,7 @@ function setValue(i,d,revealed){
     state.values[i]=d; state.notes[i]=0; state.revealed[i]=revealed?1:0;
     if(state.autoClear) for(const p of peers[i]) state.notes[p] &= ~(1<<(d-1));
   }
-  clearFlash(); render(); checkSolved();
+  hintInvalidate(); clearFlash(); render(); checkSolved();
 }
 function toggleNote(i,d){
   if(state.puzzle[i] || state.solved) return;
@@ -663,8 +989,9 @@ function erase(i){
   if(state.puzzle[i] || state.solved) return;
   if(!state.values[i] && !state.notes[i]) return;
   pushHistory();
+  hintInvalidate();
   state.values[i]=0; state.notes[i]=0; state.revealed[i]=0;
-  clearFlash(); render();
+  hintInvalidate(); clearFlash(); render();
 }
 function fillNotes(){
   if(isSetup() || state.solved) return;
@@ -677,7 +1004,7 @@ function undo(){
   const h = state.history.pop();
   if(!h) return;
   state.puzzle.set(h.p); state.values.set(h.v); state.notes.set(h.n); state.revealed.set(h.r);
-  state.solved=false; clearFlash(); render();
+  state.solved=false; hintInvalidate(); clearFlash(); render();
 }
 function inputDigit(d, shift){
   const i=state.selected;
@@ -686,8 +1013,107 @@ function inputDigit(d, shift){
   if(asNote) toggleNote(i,d); else setValue(i,d,false);
 }
 
-/* ---------- hint & check ---------- */
-function hint(){
+/* ---------- explained hints ---------- */
+/* hintCand carries eliminations between hints. Rebuilding it from the grid
+   would discard them, and an elimination technique would then re-derive the
+   same deduction forever instead of chaining to a placement. */
+function hintInvalidate(){ hintCand = null; clearHint(); }
+function hintCandNow(){ if(!hintCand) hintCand = hintCandidates(combined()); return hintCand; }
+
+function clearHint(){
+  currentHint = null; hintApply = null;
+  $("#hint").classList.remove("show","dead");
+}
+
+function paintHint(o){
+  $("#hint-kind").textContent = o.kind;
+  $("#hint-text").textContent = o.text;
+  $("#hint").classList.toggle("dead", !!o.dead);
+  const ap = $("#hint-apply");
+  if(o.apply){ ap.textContent = o.apply; ap.style.display = ""; hintApply = o.onApply; }
+  else { ap.style.display = "none"; hintApply = null; }
+  $("#hint").classList.add("show");
+}
+
+function showHint(){
+  if(isSetup() || state.solved) return;
+  clearHint();
+
+  if(state.solCount === 0){
+    paintHint({dead:true, kind:"No solution",
+      text:"These clues contradict each other, so this board has no completion at all. There is no next move to explain."});
+    return render();
+  }
+  if(state.solCount !== 1){
+    paintHint({dead:true, kind:"Too many solutions",
+      text:"This board has more than one valid completion, so there is no single correct next move. Add a clue or two and it will have one."});
+    return render();
+  }
+
+  let wrong = 0;
+  for(let i=0;i<81;i++) if(!state.puzzle[i] && state.values[i] && state.values[i]!==state.solution[i]) wrong++;
+  if(wrong){
+    paintHint({dead:true, kind:"Wrong number on the board",
+      text:(wrong===1 ? "One of your numbers does not belong" : wrong+" of your numbers do not belong")
+           +", so nothing follows logically from here. Check will mark "+(wrong===1?"it":"them")+" in red."});
+    return render();
+  }
+
+  const grid = combined();
+  for(let i=0;i<81;i++) if(!grid[i]){
+    const h = findHint(grid, hintCandNow());
+    if(!h){
+      paintHint({dead:true, kind:"Beyond me",
+        text:"Finishing this needs a technique I cannot explain yet. I can still show you the answer for one cell.",
+        apply:"Reveal a cell", onApply:()=>{ clearHint(); revealCell(); }});
+      return render();
+    }
+    currentHint = h;
+    paintHint({
+      kind: h.label,
+      text: h.text,
+      apply: h.place ? ("Place the "+h.place.digit) : "Rule it out in my notes",
+      onApply: applyHint
+    });
+    return render();
+  }
+}
+
+function applyHint(){
+  const h = currentHint;
+  if(!h) return;
+  if(h.place){
+    state.selected = h.place.cell;
+    clearHint();
+    setValue(h.place.cell, h.place.digit, false);
+    return;
+  }
+  /* An elimination is invisible unless the notes show it, so fill the affected
+     cells first when they are empty. */
+  pushHistory();
+  const cand = hintCandNow();
+  for(const e of h.eliminations){
+    if(!state.notes[e.cell] && !state.values[e.cell]) state.notes[e.cell] = candidates(e.cell);
+    state.notes[e.cell] &= ~(1<<(e.digit-1));
+    cand[e.cell] &= ~(1<<(e.digit-1));
+  }
+  clearHint();
+  render();
+}
+
+function hintHighlight(h){
+  const target=new Set(), because=new Set(), elim=new Map();
+  if(h.place) target.add(h.place.cell);
+  for(const i of (h.because||[])) because.add(i);
+  for(const e of h.eliminations){
+    if(!elim.has(e.cell)) elim.set(e.cell, new Set());
+    elim.get(e.cell).add(e.digit);
+  }
+  return {target, because, elim};
+}
+
+/* ---------- reveal & check ---------- */
+function revealCell(){
   if(isSetup() || state.solved || state.solCount===0) return;
   let target = state.selected;
   const known = state.solCount===1 ? state.solution : null;
@@ -776,6 +1202,7 @@ function enterSetup(){
   state.puzzle.fill(0); state.values.fill(0); state.notes.fill(0); state.revealed.fill(0);
   state.solution.fill(0); state.solCount=1; state.givens=0;
   state.selected=0;
+  hintInvalidate();
   state.mode="setup"; state.solved=false; state.history.length=0;
   page.dataset.mode="setup";
   hideVeil(); clearFlash();
@@ -790,6 +1217,7 @@ function cancelSetup(){
   state.solution.set(setupBackup.solution);
   state.solCount=setupBackup.solCount; state.source=setupBackup.source;
   state.givens=setupBackup.givens; state.elapsed=setupBackup.elapsed; state.solved=setupBackup.solved;
+  hintInvalidate();
   state.mode="play"; page.dataset.mode="play"; state.history.length=0;
   $("#clock").textContent = fmt(state.elapsed);
   clearFlash(); render();
@@ -809,6 +1237,7 @@ function startPlaying(){
   if(changed) state.source = "custom";
   state.givens = clues;
   state.mode="play"; page.dataset.mode="play";
+  hintInvalidate();
   state.history.length=0; state.solved=false; state.running=true; state.paused=false;
   if(changed){ state.elapsed=0; state.values.fill(0); state.notes.fill(0); state.revealed.fill(0); }
   $("#clock").textContent = fmt(state.elapsed);
@@ -846,7 +1275,7 @@ function loadText(){
     state.puzzle[i] = (ch==="." || ch==="0") ? 0 : +ch;
     state.values[i]=0; state.notes[i]=0; state.revealed[i]=0;
   }
-  clearFlash(); render();
+  hintInvalidate(); clearFlash(); render();
   const dupes = conflictSet().size;
   note("Loaded "+clueCount()+" clues"+(dupes ? ", and "+dupes+" of them clash, marked in red." : "."), dupes>0);
 }
@@ -975,6 +1404,7 @@ function newGame(level){
     state.history.length=0;
     state.elapsed=0; state.solved=false; state.running=true; state.paused=false;
     state.givens=givens; state.solCount=1;
+    hintInvalidate();
     state.mode="play"; page.dataset.mode="play";
     clearFlash();
     hideVeil();
@@ -997,6 +1427,7 @@ function blankStart(){
   state.elapsed=0; state.solved=false; state.running=true; state.paused=false;
   state.selected=0;
   setupBackup=null;
+  hintInvalidate();
   state.mode="setup"; page.dataset.mode="setup";
   clearFlash(); hideVeil();
   $("#clock").textContent="0:00";
@@ -1019,7 +1450,9 @@ $("#t-notes").addEventListener("click",()=>{ state.notesMode=!state.notesMode; r
 $("#t-fill").addEventListener("click", fillNotes);
 $("#t-erase").addEventListener("click",()=> erase(state.selected));
 $("#t-undo").addEventListener("click", undo);
-$("#t-hint").addEventListener("click", hint);
+$("#t-hint").addEventListener("click", showHint);
+$("#hint-apply").addEventListener("click", ()=>{ if(hintApply) hintApply(); });
+$("#hint-dismiss").addEventListener("click", ()=>{ clearHint(); render(); });
 $("#t-check").addEventListener("click", check);
 $("#o-auto").addEventListener("change",(e)=>{ state.autoClear=e.target.checked; save(); });
 $("#o-conf").addEventListener("change",(e)=>{ state.flagDupes=e.target.checked; render(); });
@@ -1053,7 +1486,7 @@ document.addEventListener("keydown",(e)=>{
       else if(isSetup()){ e.preventDefault(); cancelSetup(); }
       break;
     case "n": case "N": if(!isSetup()){ e.preventDefault(); state.notesMode=!state.notesMode; render(); } break;
-    case "h": case "H": if(!isSetup()){ e.preventDefault(); hint(); } break;
+    case "h": case "H": if(!isSetup()){ e.preventDefault(); showHint(); } break;
     case "p": case "P": if(!isSetup()){ e.preventDefault(); togglePause(); } break;
   }
 });

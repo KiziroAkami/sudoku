@@ -1,6 +1,6 @@
 /* Bump VERSION on every deploy. The name is the cache key, so a new value
    is what makes an installed phone fetch the new page instead of its copy. */
-const VERSION = "sudoku-v6";
+const VERSION = "sudoku-v7";
 
 const ASSETS = [
   "./",

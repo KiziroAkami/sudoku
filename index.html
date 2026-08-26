@@ -1521,8 +1521,10 @@ if(restored){
 
 <script>
 if ("serviceWorker" in navigator) {
+  /* GitHub Pages serves sw.js with max-age=600, so without this the browser
+     can check for updates against a 10 minute old copy of the worker. */
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("./sw.js").catch(function(e){
+    navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" }).catch(function(e){
       /* No service worker means no offline, but the page still works. */
     });
   });

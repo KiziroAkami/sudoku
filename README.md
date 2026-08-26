@@ -41,7 +41,7 @@ the app. After it, the icon works with no connection at all.
 ## Updating it later
 
 Edit `index.html`, then bump `VERSION` in `sw.js` (for example to
-`sudoku-v8`) and push. The version string is the cache key, so an installed
+`sudoku-v9`) and push. The version string is the cache key, so an installed
 phone keeps serving its old copy until that value changes.
 
 ## What is in here
@@ -63,8 +63,11 @@ phone keeps serving its old copy until that value changes.
   has one solution, many, or none.
 - Paste a puzzle as 81 characters using `0` or `.` for blanks. Line breaks and
   grid borders are ignored, so a copied ASCII grid works.
-- **Hint** names the easiest technique that applies right now, explains why it
-  works, and highlights the cells involved. It refuses, with a reason, on a board
+- **Hint** walks you through the easiest technique that applies, in three stages:
+  what to look at, why it narrows to one answer, and the conclusion. The board
+  washes out the cells the deduction rules out, marks the digits doing the work
+  in green, outlines the row, column or box being reasoned about, and leaves the
+  answer as the one cell still untouched. It refuses, with a reason, on a board
   that has no solution or more than one, and it tells you when one of your own
   numbers is wrong rather than pretending a technique applies.
 - Every generated puzzle is checked at deal time to be solvable by those

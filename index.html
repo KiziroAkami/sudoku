@@ -68,8 +68,10 @@
   --bad-bg:#F0D9D5;
   --muted:#69757D;
   --setup:#7A5B1E;
-  --hint-soft:#DCE8F0;
+  --hint-soft:#CFDFE9;
   --hint-strong:#A8CDE4;
+  --evi:#2E6B4A;
+  --evi-bg:#C6E2D2;
   --shadow:0 1px 2px rgba(24,40,54,.07), 0 8px 24px -14px rgba(24,40,54,.28);
 }
 @media (prefers-color-scheme: dark){
@@ -92,8 +94,10 @@
     --bad-bg:#3B211D;
     --muted:#8B98A1;
     --setup:#D9B368;
-    --hint-soft:#1E2C35;
+    --hint-soft:#1F2B33;
     --hint-strong:#2E4A58;
+    --evi:#79C79B;
+    --evi-bg:#1C3628;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.8);
   }
 }
@@ -116,8 +120,10 @@
   --bad-bg:#3B211D;
   --muted:#8B98A1;
   --setup:#D9B368;
-  --hint-soft:#1E2C35;
+  --hint-soft:#1F2B33;
   --hint-strong:#2E4A58;
+  --evi:#79C79B;
+  --evi-bg:#1C3628;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -16px rgba(0,0,0,.8);
 }
 
@@ -239,12 +245,23 @@ select.btn{padding-right:8px}
 .cell.sel::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none}
 .page[data-mode="setup"] .cell.sel::after{border-color:var(--setup)}
 
-/* hint highlighting. Placed after .sel so an explained cell reads as explained. */
-.cell.hint-because{background:var(--hint-soft)}
-.cell.hint-elim{background:var(--bad-bg)}
-.cell.hint-target{background:var(--hint-strong)}
-.cell.hint-target::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none}
+/* Walkthrough highlighting. Order matters: the wash goes down first, then the
+   evidence, and the survivor last so it reads as the one cell left standing. */
+.cell.hl-covered{background:var(--hint-soft)}
+.cell.hl-evidence{background:var(--evi-bg)}
+.cell.hl-evidence .val{color:var(--evi);font-weight:700}
+.cell.hl-cut{background:var(--bad-bg)}
+.cell.hl-target{background:var(--cellbg)}
+.cell.hl-target::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none;z-index:1}
+.cell .val.hl-preview{color:var(--accent);opacity:.42}
 .cell .notes b.hint-cut{color:var(--bad);text-decoration:line-through;opacity:1}
+
+.hint-frame{
+  position:absolute;pointer-events:none;z-index:2;display:none;
+  border:3px solid var(--accent);border-radius:4px;
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--paper) 70%, transparent);
+}
+.hint-frame.show{display:block}
 
 .veil{
   position:absolute;inset:0;display:none;place-items:center;text-align:center;
@@ -267,8 +284,14 @@ select.btn{padding-right:8px}
 .hint-kind{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:7px}
 .hint.dead .hint-kind{color:var(--muted)}
 .hint-text{margin:0;font-size:13.5px;line-height:1.55}
-.hint-actions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
-.hint-actions .btn{flex:1 1 auto}
+.hint-nav{display:flex;align-items:center;gap:9px;margin-top:12px}
+.hint-nav .btn{flex:0 0 auto}
+.hint-nav #hint-next{flex:1 1 auto}
+.hint-dots{display:flex;gap:5px;flex:0 0 auto}
+.hint-dots i{width:6px;height:6px;border-radius:50%;background:var(--edge);display:block}
+.hint-dots i.on{background:var(--accent)}
+.hint-dismiss{width:100%;margin-top:7px}
+.hint.dead .hint-nav .hint-dots{display:none}
 .prov{display:flex;flex-wrap:wrap;gap:6px}
 .prov:empty{display:none}
 .chip{
@@ -343,6 +366,7 @@ textarea#io::placeholder{color:var(--muted)}
   <div class="layout">
     <div class="board-frame">
       <div class="board" id="board" role="grid" aria-label="Sudoku grid"></div>
+      <div class="hint-frame" id="hint-frame"></div>
       <div class="veil" id="veil">
         <div>
           <h2 id="veil-title">Paused</h2>
@@ -360,10 +384,12 @@ textarea#io::placeholder{color:var(--muted)}
       <div class="hint" id="hint">
         <div class="hint-kind" id="hint-kind"></div>
         <p class="hint-text" id="hint-text"></p>
-        <div class="hint-actions">
-          <button class="btn on" id="hint-apply">Place it</button>
-          <button class="btn ghost" id="hint-dismiss">Dismiss</button>
+        <div class="hint-nav">
+          <button class="btn ghost" id="hint-back">Back</button>
+          <span class="hint-dots" id="hint-dots"></span>
+          <button class="btn on" id="hint-next">Next</button>
         </div>
+        <button class="btn ghost hint-dismiss" id="hint-dismiss">Dismiss</button>
       </div>
 
       <div class="prov" id="prov"></div>
@@ -541,6 +567,7 @@ function hName(i){ return "R"+(hRow(i)+1)+"C"+(hCol(i)+1); }
 function hBits(m){ const o=[]; for(let d=1;d<=9;d++) if(m & (1<<(d-1))) o.push(d); return o; }
 function hPop(m){ let n=0; while(m){ m&=m-1; n++; } return n; }
 function hList(a){ return a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" and "+a[a.length-1]; }
+function hListOr(a){ return a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" or "+a[a.length-1]; }
 function hCombos(arr, n){
   const out=[];
   (function go(start, cur){
@@ -570,7 +597,8 @@ function tNakedSingle(grid, cand){
     return {
       kind:"naked-single", label:"Naked single",
       text: hName(i)+" has only one candidate left. Every other digit already appears in its row, column or box, so it must be "+d+".",
-      place:{cell:i, digit:d}, eliminations:[], because, unit:null
+      place:{cell:i, digit:d}, eliminations:[], because, unit:null,
+      data:{cell:i, digit:d}
     };
   }
   return null;
@@ -594,7 +622,8 @@ function tHiddenSingle(grid, cand){
       return {
         kind:"hidden-single", label:"Hidden single",
         text: d+" has only one place left in this "+u.type+". Every other empty cell there is blocked by a "+d+" elsewhere, so "+hName(i)+" must be "+d+".",
-        place:{cell:i, digit:d}, eliminations:[], because:Array.from(because), unit:u
+        place:{cell:i, digit:d}, eliminations:[], because:Array.from(because), unit:u,
+        data:{cell:i, digit:d, blockers:Array.from(because)}
       };
     }
   }
@@ -619,7 +648,8 @@ function tPointing(grid, cand){
           kind:"pointing", label:"Pointing "+(spots.length===2?"pair":"triple"),
           text:"Inside this box, "+d+" can only go in one "+axis+". Wherever it lands it is in that "+axis+", so "+d+" is ruled out of the rest of the "+axis+".",
           place:null, eliminations: elim.map(i=>({cell:i, digit:d})),
-          because: spots, unit:{type:axis, index:line, cells:lineCells}
+          because: spots, unit:{type:axis, index:line, cells:lineCells},
+          data:{digit:d, spots, axis, line, box:b}
         };
       }
     }
@@ -643,7 +673,8 @@ function tBoxLine(grid, cand){
         kind:"box-line", label:"Box line reduction",
         text:"In this "+u.type+", "+d+" can only go inside one box. That box must use its "+d+" there, so "+d+" is ruled out of the rest of the box.",
         place:null, eliminations: elim.map(i=>({cell:i, digit:d})),
-        because: spots, unit:u
+        because: spots, unit:u,
+        data:{digit:d, spots, box:b}
       };
     }
   }
@@ -668,8 +699,9 @@ function tNakedSubset(grid, cand, n){
       const ds = hList(hBits(union));
       return {
         kind:"naked-subset-"+n, label:"Naked "+(n===2?"pair":"triple"),
-        text:"These "+n+" cells hold only "+ds+" between them. They will use all of those up, so nothing else in this "+u.type+" can be "+ds+".",
-        place:null, eliminations:elim, because:combo, unit:u
+        text:"These "+n+" cells hold only "+ds+" between them. They will use all of those up, so nothing else in this "+u.type+" can be "+hListOr(hBits(union))+".",
+        place:null, eliminations:elim, because:combo, unit:u,
+        data:{cells:combo, digits:hBits(union), n}
       };
     }
   }
@@ -700,7 +732,8 @@ function tHiddenSubset(grid, cand, n){
       return {
         kind:"hidden-subset-"+n, label:"Hidden "+(n===2?"pair":"triple"),
         text:hList(combo)+" have nowhere else to go in this "+u.type+" but these "+n+" cells. Between them they use every one, so those cells cannot be anything else.",
-        place:null, eliminations:elim, because:cells, unit:u
+        place:null, eliminations:elim, because:cells, unit:u,
+        data:{cells, digits:combo, n}
       };
     }
   }
@@ -735,12 +768,121 @@ function tXWing(grid, cand){
         return {
           kind:"x-wing", label:"X-Wing",
           text:"In these two "+axis+"s, "+d+" can only sit in the same two "+crossAxis+"s. Those four cells form a rectangle, and whichever way it falls both "+crossAxis+"s get their "+d+" from it, so "+d+" is ruled out of the rest of them.",
-          place:null, eliminations:elim, because:A.concat(B), unit:null
+          place:null, eliminations:elim, because:A.concat(B), unit:null,
+          data:{digit:d, cells:A.concat(B), axis, crossAxis, lines:ka}
         };
       }
     }
   }
   return null;
+}
+
+/* ---------------------------------------------------------------
+   Walkthroughs. A single sentence states the conclusion; these stage it,
+   so the board shows WHY before it shows WHAT. The pattern throughout:
+   wash the cells the deduction rules out, leave the survivor untouched,
+   and outline the unit being reasoned about.
+   --------------------------------------------------------------- */
+
+/* Every cell the given digits at `cells` can see along their own row and
+   column. This is crosshatching, which is what the wash is drawing. */
+function hLines(cells){
+  const out=new Set();
+  for(const i of cells){
+    for(const x of HINT_ROWS[hRow(i)]) out.add(x);
+    for(const x of HINT_COLS[hCol(i)]) out.add(x);
+  }
+  return Array.from(out);
+}
+
+function hintSteps(h){
+  const d = h.data || {};
+  switch(h.kind){
+
+    case "naked-single": {
+      const seen = HINT_PEERS[d.cell];
+      return [
+        { text:"Start with everything "+hName(d.cell)+" can see: its row, its column and its box.",
+          show:{ covered:seen, target:[d.cell] } },
+        { text:"Between them they already use every digit except "+d.digit+".",
+          show:{ covered:seen, evidence:seen, target:[d.cell] } },
+        { text:"Nothing else can go there, so "+hName(d.cell)+" is "+d.digit+".",
+          show:{ covered:seen, evidence:seen, target:[d.cell], preview:{cell:d.cell, digit:d.digit} } }
+      ];
+    }
+
+    case "hidden-single": {
+      const wash = hLines(d.blockers);
+      return [
+        { text:"Watch where "+d.digit+" already sits, and the rows and columns each one rules out.",
+          show:{ evidence:d.blockers, covered:wash } },
+        { text:"Inside this "+h.unit.type+" that leaves exactly one cell free to hold a "+d.digit+".",
+          show:{ evidence:d.blockers, covered:wash, frame:h.unit, target:[d.cell] } },
+        { text:"It is the only possibility left, so "+hName(d.cell)+" is "+d.digit+".",
+          show:{ evidence:d.blockers, covered:wash, frame:h.unit, target:[d.cell], preview:{cell:d.cell, digit:d.digit} } }
+      ];
+    }
+
+    case "pointing": {
+      const box = {type:"box", index:d.box, cells:HINT_BOXES[d.box]};
+      return [
+        { text:"In this box, "+d.digit+" has only these places left.",
+          show:{ frame:box, target:d.spots } },
+        { text:"They all sit in the same "+d.axis+", so this box takes its "+d.digit+" from that "+d.axis+" whichever cell wins.",
+          show:{ frame:h.unit, target:d.spots } },
+        { text:"That "+d.axis+" is spoken for, so "+d.digit+" is out everywhere else along it.",
+          show:{ frame:h.unit, target:d.spots, cut:h.eliminations } }
+      ];
+    }
+
+    case "box-line": {
+      const box = {type:"box", index:d.box, cells:HINT_BOXES[d.box]};
+      return [
+        { text:"In this "+h.unit.type+", "+d.digit+" has only these places left.",
+          show:{ frame:h.unit, target:d.spots } },
+        { text:"They all fall inside one box, so that box takes its "+d.digit+" from this "+h.unit.type+".",
+          show:{ frame:box, target:d.spots } },
+        { text:"The rest of the box cannot have it, so "+d.digit+" is out of those cells.",
+          show:{ frame:box, target:d.spots, cut:h.eliminations } }
+      ];
+    }
+
+    case "naked-subset-2": case "naked-subset-3": {
+      const ds = hList(d.digits);
+      return [
+        { text:"These "+d.n+" cells hold nothing but "+ds+" between them.",
+          show:{ frame:h.unit, target:d.cells } },
+        { text:d.n+" cells, "+d.n+" digits. They will use every one of "+ds+" up.",
+          show:{ frame:h.unit, target:d.cells, evidence:d.cells } },
+        { text:"So nothing else in this "+h.unit.type+" can be "+hListOr(d.digits)+".",
+          show:{ frame:h.unit, target:d.cells, cut:h.eliminations } }
+      ];
+    }
+
+    case "hidden-subset-2": case "hidden-subset-3": {
+      const ds = hList(d.digits);
+      return [
+        { text:ds+" have nowhere left in this "+h.unit.type+" but these "+d.n+" cells.",
+          show:{ frame:h.unit, target:d.cells } },
+        { text:d.n+" digits with only "+d.n+" cells to share. Between them they fill all of them.",
+          show:{ frame:h.unit, target:d.cells, evidence:d.cells } },
+        { text:"So those cells cannot be anything other than "+ds+".",
+          show:{ frame:h.unit, target:d.cells, cut:h.eliminations } }
+      ];
+    }
+
+    case "x-wing": {
+      return [
+        { text:"In two "+d.axis+"s, "+d.digit+" is down to the same two places each.",
+          show:{ target:d.cells } },
+        { text:"The four line up as a rectangle. Whichever diagonal wins, both "+d.crossAxis+"s take a "+d.digit+" from it.",
+          show:{ target:d.cells, evidence:d.cells } },
+        { text:"So "+d.digit+" is out of the rest of both "+d.crossAxis+"s.",
+          show:{ target:d.cells, cut:h.eliminations } }
+      ];
+    }
+  }
+  return [{ text:h.text, show:{ target:h.place?[h.place.cell]:[], because:h.because, cut:h.eliminations } }];
 }
 
 /* Easiest first. The order IS the difficulty ranking, so the first hit is
@@ -841,6 +983,7 @@ const state = {
 };
 let wrongFlash = new Set(), flashTimer = null, setupBackup = null;
 let hintCand = null, currentHint = null, hintApply = null;
+let hintStepList = null, hintStepAt = 0;
 
 /* ---------- DOM ---------- */
 const boardEl = $("#board");
@@ -897,7 +1040,8 @@ function render(){
   const sel = state.selected;
   const selRow=(sel/9)|0, selCol=sel%9, selBox=boxOf(sel);
   const selDigit = at(sel);
-  const hl = currentHint ? hintHighlight(currentHint) : null;
+  const hl = hintHighlight();
+  paintFrame(hl && hl.frame);
 
   for(let i=0;i<81;i++){
     const el=cellEls[i], r=(i/9)|0, c=i%9;
@@ -906,21 +1050,24 @@ function render(){
     el.classList.toggle("revealed", !setup && !state.puzzle[i] && !!state.revealed[i] && !!state.values[i]);
     el.classList.toggle("house", !hl && i!==sel && (r===selRow || c===selCol || boxOf(i)===selBox));
     el.classList.toggle("same", !hl && i!==sel && !!selDigit && d===selDigit);
-    el.classList.toggle("hint-because", !!hl && hl.because.has(i));
-    el.classList.toggle("hint-elim", !!hl && hl.elim.has(i));
-    el.classList.toggle("hint-target", !!hl && hl.target.has(i));
+    el.classList.toggle("hl-covered",  !!hl && hl.covered.has(i));
+    el.classList.toggle("hl-evidence", !!hl && hl.evidence.has(i) && !!d);
+    el.classList.toggle("hl-cut",      !!hl && hl.cut.has(i));
+    el.classList.toggle("hl-target",   !!hl && hl.target.has(i));
     el.classList.toggle("bad", shown.has(i));
     el.classList.toggle("wrong", wrongFlash.has(i));
-    el.classList.toggle("sel", i===sel);
+    el.classList.toggle("sel", !hl && i===sel);
     el.tabIndex = (i===sel) ? 0 : -1;
 
-    valEls[i].textContent = d ? d : "";
+    const prev = hl && hl.preview && hl.preview.cell === i && !d;
+    valEls[i].textContent = prev ? hl.preview.digit : (d ? d : "");
+    valEls[i].classList.toggle("hl-preview", !!prev);
     const nm = (!setup && !d) ? state.notes[i] : 0;
     for(let k=0;k<9;k++){
       const on = !!(nm & (1<<k));
       noteEls[i][k].classList.toggle("on", on);
       noteEls[i][k].classList.toggle("hit", !hl && on && selDigit === k+1);
-      noteEls[i][k].classList.toggle("hint-cut", !!hl && hl.elim.has(i) && hl.elim.get(i).has(k+1));
+      noteEls[i][k].classList.toggle("hint-cut", !!hl && hl.cut.has(i) && hl.cut.get(i).has(k+1));
     }
     el.setAttribute("aria-label",
       "Row "+(r+1)+" column "+(c+1)+(d ? ", "+d+((setup||state.puzzle[i])?" clue":"") : (nm ? ", notes "+bits(nm).join(" ") : ", empty")));
@@ -1022,16 +1169,39 @@ function hintCandNow(){ if(!hintCand) hintCand = hintCandidates(combined()); ret
 
 function clearHint(){
   currentHint = null; hintApply = null;
+  hintStepList = null; hintStepAt = 0;
   $("#hint").classList.remove("show","dead");
+  $("#hint-frame").classList.remove("show");
 }
 
+/* A hint with nothing to walk through: a refusal, or a board beyond the engine. */
 function paintHint(o){
   $("#hint-kind").textContent = o.kind;
   $("#hint-text").textContent = o.text;
-  $("#hint").classList.toggle("dead", !!o.dead);
-  const ap = $("#hint-apply");
-  if(o.apply){ ap.textContent = o.apply; ap.style.display = ""; hintApply = o.onApply; }
-  else { ap.style.display = "none"; hintApply = null; }
+  $("#hint").classList.toggle("dead", true);
+  $("#hint-dots").innerHTML = "";
+  $("#hint-back").style.display = "none";
+  const nx = $("#hint-next");
+  if(o.apply){ nx.textContent = o.apply; nx.style.display = ""; hintApply = o.onApply; }
+  else { nx.style.display = "none"; hintApply = null; }
+  $("#hint").classList.add("show");
+}
+
+function paintStep(){
+  const h = currentHint, steps = hintStepList;
+  const last = hintStepAt === steps.length - 1;
+  $("#hint-kind").textContent = h.label;
+  $("#hint-text").textContent = steps[hintStepAt].text;
+  $("#hint").classList.remove("dead");
+  $("#hint-dots").innerHTML = steps.map((_,i) =>
+    '<i class="' + (i === hintStepAt ? "on" : "") + '"></i>').join("");
+  const bk = $("#hint-back");
+  bk.style.display = "";
+  bk.disabled = hintStepAt === 0;
+  const nx = $("#hint-next");
+  nx.style.display = "";
+  nx.textContent = last ? (h.place ? "Place the " + h.place.digit : "Rule it out in my notes") : "Next";
+  hintApply = last ? applyHint : function(){ hintStepAt++; paintStep(); render(); };
   $("#hint").classList.add("show");
 }
 
@@ -1069,12 +1239,9 @@ function showHint(){
       return render();
     }
     currentHint = h;
-    paintHint({
-      kind: h.label,
-      text: h.text,
-      apply: h.place ? ("Place the "+h.place.digit) : "Rule it out in my notes",
-      onApply: applyHint
-    });
+    hintStepList = hintSteps(h);
+    hintStepAt = 0;
+    paintStep();
     return render();
   }
 }
@@ -1101,15 +1268,38 @@ function applyHint(){
   render();
 }
 
-function hintHighlight(h){
-  const target=new Set(), because=new Set(), elim=new Map();
-  if(h.place) target.add(h.place.cell);
-  for(const i of (h.because||[])) because.add(i);
-  for(const e of h.eliminations){
-    if(!elim.has(e.cell)) elim.set(e.cell, new Set());
-    elim.get(e.cell).add(e.digit);
+function hintHighlight(){
+  if(!hintStepList) return null;
+  const show = hintStepList[hintStepAt].show || {};
+  const cut = new Map();
+  for(const e of (show.cut||[])){
+    if(!cut.has(e.cell)) cut.set(e.cell, new Set());
+    cut.get(e.cell).add(e.digit);
   }
-  return {target, because, elim};
+  return {
+    covered: new Set(show.covered||[]),
+    evidence:new Set(show.evidence||[]),
+    target:  new Set(show.target||[]),
+    cut, preview: show.preview || null, frame: show.frame || null
+  };
+}
+
+/* The board is a uniform 9x9, so any unit is one rectangle over it. */
+function paintFrame(unit){
+  const el = $("#hint-frame");
+  if(!unit){ el.classList.remove("show"); return; }
+  const T = 100/9;
+  let box;
+  if(unit.type === "box"){
+    box = { left:(unit.index%3)*3*T, top:((unit.index/3)|0)*3*T, w:3*T, h:3*T };
+  } else if(unit.type === "row"){
+    box = { left:0, top:unit.index*T, w:100, h:T };
+  } else {
+    box = { left:unit.index*T, top:0, w:T, h:100 };
+  }
+  el.style.left = box.left+"%"; el.style.top = box.top+"%";
+  el.style.width = box.w+"%";   el.style.height = box.h+"%";
+  el.classList.add("show");
 }
 
 /* ---------- reveal & check ---------- */
@@ -1451,7 +1641,8 @@ $("#t-fill").addEventListener("click", fillNotes);
 $("#t-erase").addEventListener("click",()=> erase(state.selected));
 $("#t-undo").addEventListener("click", undo);
 $("#t-hint").addEventListener("click", showHint);
-$("#hint-apply").addEventListener("click", ()=>{ if(hintApply) hintApply(); });
+$("#hint-next").addEventListener("click", ()=>{ if(hintApply) hintApply(); });
+$("#hint-back").addEventListener("click", ()=>{ if(hintStepAt>0){ hintStepAt--; paintStep(); render(); } });
 $("#hint-dismiss").addEventListener("click", ()=>{ clearHint(); render(); });
 $("#t-check").addEventListener("click", check);
 $("#o-auto").addEventListener("change",(e)=>{ state.autoClear=e.target.checked; save(); });

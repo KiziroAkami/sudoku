@@ -155,7 +155,6 @@ body{
 /* ---------- masthead ---------- */
 .masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .wordmark{font-family:'Instrument Serif','Iowan Old Style',Georgia,serif;font-size:clamp(30px,5.2vw,42px);line-height:.95;letter-spacing:-.01em}
-.tagline{font-size:12px;color:var(--muted);letter-spacing:.02em;margin-top:5px}
 .mast-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .clock{font-family:'Spline Sans Mono',ui-monospace,Menlo,monospace;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:66px;text-align:right}
 .clock.paused{color:var(--muted)}
@@ -299,13 +298,8 @@ textarea#io::placeholder{color:var(--muted)}
 .opts label{display:flex;align-items:center;gap:9px;cursor:pointer}
 .opts input{accent-color:var(--accent);width:15px;height:15px;margin:0}
 
-.legend{border-top:1px solid var(--edge);padding-top:14px;font-size:12px;color:var(--muted);line-height:1.85}
-.legend kbd{
-  font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:11px;
-  border:1px solid var(--edge);border-bottom-width:2px;border-radius:3px;
-  padding:1px 5px;background:var(--panel);color:var(--ink);
-}
-.foot{font-size:12.5px;color:var(--muted);border-top:1px solid var(--edge);padding-top:14px;min-height:2.6em}
+.foot{font-size:12.5px;color:var(--muted);border-top:1px solid var(--edge);padding-top:14px}
+.foot:empty{display:none}
 .foot.alert{color:var(--bad)}
 
 @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
@@ -315,7 +309,6 @@ textarea#io::placeholder{color:var(--muted)}
   <header class="masthead">
     <div>
       <div class="wordmark">Sudoku</div>
-      <div class="tagline">Candidate notes, and a board you can fill yourself</div>
     </div>
     <div class="mast-right">
       <select class="btn" id="diff" aria-label="Difficulty">
@@ -384,20 +377,10 @@ textarea#io::placeholder{color:var(--muted)}
         </div>
       </div>
 
-      <div class="legend play-only">
-        <kbd>1</kbd>-<kbd>9</kbd> place &nbsp; <kbd>Shift</kbd>+digit flips note/number<br>
-        <kbd>N</kbd> notes &nbsp; <kbd>Backspace</kbd> erase &nbsp; <kbd>U</kbd> undo &nbsp; <kbd>H</kbd> reveal<br>
-        Arrow keys move the selection.
-      </div>
-      <div class="legend setup-only">
-        <kbd>1</kbd>-<kbd>9</kbd> set a clue &nbsp; <kbd>Backspace</kbd> clears it<br>
-        <kbd>Enter</kbd> start playing &nbsp; <kbd>Esc</kbd> cancel &nbsp; <kbd>U</kbd> undo<br>
-        Nothing here is rejected. Put any digit in any cell.
-      </div>
     </aside>
   </div>
 
-  <div class="foot" id="foot">Ready.</div>
+  <div class="foot" id="foot"></div>
 </div>
 
 <script>
@@ -700,7 +683,7 @@ function fillNotes(){
   pushHistory();
   for(let i=0;i<81;i++) if(!at(i)) state.notes[i] = candidates(i);
   clearFlash(); render();
-  note("Filled every empty cell with its legal candidates.");
+  note("");
 }
 function undo(){
   const h = state.history.pop();
@@ -739,7 +722,7 @@ function hint(){
     state.selected=target;
     setValue(target, sol[target], true);
   }
-  note("Revealed row "+(((state.selected/9)|0)+1)+", column "+((state.selected%9)+1)+".");
+  note("");
 }
 
 function check(){
@@ -774,7 +757,7 @@ function checkSolved(){
   state.solved=true; state.running=false;
   const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
   showVeil("Solved", src+", "+state.givens+" clues.", "Time "+fmt(state.elapsed), "New puzzle");
-  note("Solved in "+fmt(state.elapsed)+".");
+  note("");
   render();
 }
 
@@ -790,7 +773,7 @@ function enterSetup(){
   page.dataset.mode="setup";
   hideVeil(); clearFlash();
   $("#io").value = "";
-  note("Type any digit into any cell. Nothing is rejected here: duplicates just show in red so you can see them. Press Start playing when the clues are in.");
+  note("");
   render();
 }
 function cancelSetup(){
@@ -803,7 +786,7 @@ function cancelSetup(){
   state.mode="play"; page.dataset.mode="play"; state.history.length=0;
   $("#clock").textContent = fmt(state.elapsed);
   clearFlash(); render();
-  note("Left the clues as they were.");
+  note("");
 }
 function startPlaying(){
   const clues = clueCount();
@@ -829,7 +812,7 @@ function startPlaying(){
   if(state.solCount===0){
     note("Locked in "+clues+" clues, and they contradict each other, so this board has no completion. Reveal and Check are off. Play it anyway, or go back and edit.", true);
   } else if(state.solCount===1){
-    note("Locked in "+clues+" clues with exactly one solution. Everything works: Check compares against that answer.");
+    note("");
   } else {
     note("Locked in "+clues+" clues. More than one completion fits, so Check verifies the rules and looks ahead instead of comparing to a fixed answer.");
   }
@@ -841,7 +824,7 @@ function clearBoard(){
   pushHistory();
   state.puzzle.fill(0); state.values.fill(0); state.notes.fill(0); state.revealed.fill(0);
   clearFlash(); render();
-  note("Board cleared. Every cell is yours.");
+  note("");
 }
 function loadText(){
   const raw = $("#io").value;
@@ -858,7 +841,7 @@ function loadText(){
   }
   clearFlash(); render();
   const dupes = conflictSet().size;
-  note("Loaded "+clueCount()+" clues"+(dupes ? ", and "+dupes+" of them clash. They are marked in red." : ".")+" Press Start playing when you are happy.", dupes>0);
+  note("Loaded "+clueCount()+" clues"+(dupes ? ", and "+dupes+" of them clash, marked in red." : "."), dupes>0);
 }
 function toText(){
   let s="";
@@ -969,7 +952,7 @@ function note(msg, alert){
 /* ---------- new game ---------- */
 function newGame(level){
   state.source = level;
-  note("Carving a "+level+" puzzle with a single solution...");
+  note("");
   showVeil("Generating", "Digging out clues while keeping exactly one solution.", "", "Wait");
   $("#veil-btn").disabled = true;
   setTimeout(()=>{
@@ -989,7 +972,7 @@ function newGame(level){
     let first=0; while(first<81 && state.puzzle[first]) first++;
     state.selected = first<81 ? first : 40;
     render();
-    note(level.charAt(0).toUpperCase()+level.slice(1)+" puzzle, "+givens+" clues. Press N for notes, or Enter my own to type in a puzzle of your own.");
+    note("");
   }, 30);
 }
 
@@ -1008,7 +991,7 @@ function blankStart(){
   $("#clock").classList.remove("paused");
   $("#pause").textContent="Pause";
   render();
-  note("Empty board. Type your puzzle straight in, or paste it in the box below. New puzzle generates one for you instead.");
+  note("");
 }
 
 /* ---------- events ---------- */
@@ -1083,8 +1066,7 @@ if(restored){
     const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
     showVeil("Solved", src+", "+state.givens+" clues.", "Time "+fmt(state.elapsed), "New puzzle");
   }
-  note(isSetup() ? "Back in setup. Type any digit into any cell."
-                 : "Picked up where you left off.");
+  note("");
 } else {
   blankStart();
 }

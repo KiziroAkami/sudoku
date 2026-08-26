@@ -41,7 +41,7 @@ the app. After it, the icon works with no connection at all.
 ## Updating it later
 
 Edit `index.html`, then bump `VERSION` in `sw.js` (for example to
-`sudoku-v2`) and push. The version string is the cache key, so an installed
+`sudoku-v3`) and push. The version string is the cache key, so an installed
 phone keeps serving its old copy until that value changes.
 
 ## What is in here

@@ -630,14 +630,9 @@ function renderProvenance(badCount){
   const chips=[];
   if(isSetup()){
     chips.push(['edit','Editing clues']);
-    chips.push(['', clueCount()+' clues']);
     if(badCount) chips.push(['warn', badCount+' in conflict']);
   } else {
     chips.push([state.source==='custom'?'mark':'', state.source==='custom'?'Your puzzle':state.source]);
-    chips.push(['', state.givens+' clues']);
-    if(state.solCount===1) chips.push(['','one solution']);
-    else if(state.solCount===0) chips.push(['warn','no solution']);
-    else chips.push(['mark','many solutions']);
   }
   p.innerHTML = chips.map(([cls,txt])=>'<span class="chip '+cls+'">'+txt+'</span>').join('');
 }
@@ -756,7 +751,7 @@ function checkSolved(){
   if(conflictSet().size) return;
   state.solved=true; state.running=false;
   const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
-  showVeil("Solved", src+", "+state.givens+" clues.", "Time "+fmt(state.elapsed), "New puzzle");
+  showVeil("Solved", src+".", "Time "+fmt(state.elapsed), "New puzzle");
   note("");
   render();
 }
@@ -1064,7 +1059,7 @@ if(restored){
   render();
   if(state.solved){
     const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
-    showVeil("Solved", src+", "+state.givens+" clues.", "Time "+fmt(state.elapsed), "New puzzle");
+    showVeil("Solved", src+".", "Time "+fmt(state.elapsed), "New puzzle");
   }
   note("");
 } else {

@@ -162,6 +162,13 @@ body{
 .masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .wordmark{font-family:'Instrument Serif','Iowan Old Style',Georgia,serif;font-size:clamp(30px,5.2vw,42px);line-height:.95;letter-spacing:-.01em}
 .mast-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lang{display:flex;border:1px solid var(--edge);border-radius:4px;overflow:hidden;background:var(--panel);flex:0 0 auto}
+.lang button{
+  appearance:none;border:0;background:transparent;cursor:pointer;
+  padding:6px 9px;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);
+  transition:background .12s, color .12s;
+}
+.lang button.on{background:var(--accent);color:var(--paper)}
 .clock{font-family:'Spline Sans Mono',ui-monospace,Menlo,monospace;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:66px;text-align:right}
 .clock.paused{color:var(--muted)}
 
@@ -349,17 +356,21 @@ textarea#io::placeholder{color:var(--muted)}
     </div>
     <div class="mast-right">
       <select class="btn" id="diff" aria-label="Difficulty">
-        <option value="easy">Easy</option>
-        <option value="medium" selected>Medium</option>
-        <option value="hard">Hard</option>
-        <option value="expert">Expert</option>
+        <option value="easy" data-i18n="easy">Easy</option>
+        <option value="medium" selected data-i18n="medium">Medium</option>
+        <option value="hard" data-i18n="hard">Hard</option>
+        <option value="expert" data-i18n="expert">Expert</option>
       </select>
-      <button class="btn" id="newgame">New puzzle</button>
-      <button class="btn play-only" id="custom">Enter my own</button>
-      <button class="btn go setup-only" id="startplay">Start playing</button>
-      <button class="btn ghost setup-only" id="cancelsetup">Cancel</button>
+      <button class="btn" id="newgame" data-i18n="newPuzzle">New puzzle</button>
+      <button class="btn play-only" id="custom" data-i18n="enterMine">Enter my own</button>
+      <button class="btn go setup-only" id="startplay" data-i18n="startPlaying">Start playing</button>
+      <button class="btn ghost setup-only" id="cancelsetup" data-i18n="cancel">Cancel</button>
       <span class="clock play-only" id="clock">0:00</span>
       <button class="btn ghost play-only" id="pause" aria-label="Pause timer">Pause</button>
+      <div class="lang" id="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" class="on">EN</button>
+        <button type="button" data-lang="de">DE</button>
+      </div>
     </div>
   </header>
 
@@ -385,11 +396,11 @@ textarea#io::placeholder{color:var(--muted)}
         <div class="hint-kind" id="hint-kind"></div>
         <p class="hint-text" id="hint-text"></p>
         <div class="hint-nav">
-          <button class="btn ghost" id="hint-back">Back</button>
+          <button class="btn ghost" id="hint-back" data-i18n="back">Back</button>
           <span class="hint-dots" id="hint-dots"></span>
           <button class="btn on" id="hint-next">Next</button>
         </div>
-        <button class="btn ghost hint-dismiss" id="hint-dismiss">Dismiss</button>
+        <button class="btn ghost hint-dismiss" id="hint-dismiss" data-i18n="dismiss">Dismiss</button>
       </div>
 
       <div class="prov" id="prov"></div>
@@ -400,32 +411,32 @@ textarea#io::placeholder{color:var(--muted)}
       </div>
 
       <div class="setup-only">
-        <div class="label">Your board</div>
+        <div class="label" data-i18n="yourBoard">Your board</div>
         <div class="tools">
-          <button class="btn" id="io-clear">Clear board</button>
-          <button class="btn" id="io-copy">Copy as text</button>
+          <button class="btn" id="io-clear" data-i18n="clearBoard">Clear board</button>
+          <button class="btn" id="io-copy" data-i18n="copyText">Copy as text</button>
         </div>
-        <textarea id="io" rows="4" spellcheck="false" placeholder="Paste a puzzle here: 81 characters, 0 or . for empty cells. Line breaks and grid borders are ignored."></textarea>
-        <div style="margin-top:7px"><button class="btn" id="io-load" style="width:100%">Load pasted puzzle</button></div>
+        <textarea id="io" rows="4" spellcheck="false" data-i18n-ph="ioPlaceholder" placeholder="Paste a puzzle here: 81 characters, 0 or . for empty cells. Line breaks and grid borders are ignored."></textarea>
+        <div style="margin-top:7px"><button class="btn" id="io-load" data-i18n="loadText" style="width:100%">Load pasted puzzle</button></div>
       </div>
 
       <div class="play-only">
-        <div class="label">Tools</div>
+        <div class="label" data-i18n="tools">Tools</div>
         <div class="tools">
           <button class="btn" id="t-notes">Notes: off</button>
-          <button class="btn" id="t-fill">Fill notes</button>
-          <button class="btn" id="t-erase">Erase</button>
-          <button class="btn" id="t-undo">Undo</button>
-          <button class="btn" id="t-hint">Hint</button>
-          <button class="btn" id="t-check">Check</button>
+          <button class="btn" id="t-fill" data-i18n="fillNotes">Fill notes</button>
+          <button class="btn" id="t-erase" data-i18n="erase">Erase</button>
+          <button class="btn" id="t-undo" data-i18n="undo">Undo</button>
+          <button class="btn" id="t-hint" data-i18n="hint">Hint</button>
+          <button class="btn" id="t-check" data-i18n="check">Check</button>
         </div>
       </div>
 
       <div>
-        <div class="label">Options</div>
+        <div class="label" data-i18n="options">Options</div>
         <div class="opts">
-          <label class="play-only"><input type="checkbox" id="o-auto" checked> Clear notes when I place a number</label>
-          <label><input type="checkbox" id="o-conf" checked> Flag duplicates as I type</label>
+          <label class="play-only"><input type="checkbox" id="o-auto" checked> <span data-i18n="optAuto">Clear notes when I place a number</span></label>
+          <label><input type="checkbox" id="o-conf" checked> <span data-i18n="optConf">Flag duplicates as I type</span></label>
         </div>
       </div>
 
@@ -441,6 +452,237 @@ textarea#io::placeholder{color:var(--muted)}
 const $ = (s) => document.querySelector(s);
 const KEY = "sudoku.v1";
 const page = $("#page");
+
+/* ============================================================
+   Language packs.
+
+   The hint sentences are generated, not stored, so German gets its own
+   builders rather than a word-for-word swap: the clause order differs and
+   a substituted English skeleton reads like a machine wrote it.
+
+   Cell references follow each language's convention: R4C7 in English,
+   Z4S7 (Zeile / Spalte) in German.
+   ============================================================ */
+const I18N = {
+
+en: {
+  htmlLang: "en",
+  cell: (i) => "R" + (((i/9)|0)+1) + "C" + ((i%9)+1),
+  unit: { row:"row", column:"column", box:"box" },
+  list: (a) => a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" and "+a[a.length-1],
+  listOr: (a) => a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" or "+a[a.length-1],
+
+  ui: {
+    easy:"Easy", medium:"Medium", hard:"Hard", expert:"Expert",
+    newPuzzle:"New puzzle", enterMine:"Enter my own", startPlaying:"Start playing",
+    cancel:"Cancel", pause:"Pause", resume:"Resume",
+    padPlace:"Place a number", padNote:"Pencil in a note", padClue:"Type a clue into the selected cell",
+    yourBoard:"Your board", clearBoard:"Clear board", copyText:"Copy as text", loadText:"Load pasted puzzle",
+    ioPlaceholder:"Paste a puzzle here: 81 characters, 0 or . for empty cells. Line breaks and grid borders are ignored.",
+    tools:"Tools", notesOn:"Notes: on", notesOff:"Notes: off", fillNotes:"Fill notes",
+    erase:"Erase", undo:"Undo", hint:"Hint", check:"Check",
+    options:"Options", optAuto:"Clear notes when I place a number", optConf:"Flag duplicates as I type",
+    editing:"Editing clues", conflict:(n)=> n+" in conflict",
+    back:"Back", next:"Next", dismiss:"Dismiss",
+    placeThe:(d)=>"Place the "+d, ruleOut:"Rule it out in my notes",
+    paused:"Paused", pausedSub:"The board is hidden while the clock is stopped.",
+    solved:"Solved", time:(t)=>"Time "+t, yourPuzzle:"Your own puzzle",
+    generating:"Generating", generatingSub:"Digging out clues while keeping exactly one solution.", wait:"Wait",
+    clearTitle:"Clear the board?",
+    clearSub:"Entering your own puzzle wipes what is on the grid. Cancel on the next screen puts it back.",
+    clearIt:"Clear it", keepPlaying:"Keep playing",
+    checkTitle:"This board has no completion, so there is nothing to check against"
+  },
+
+  tech: {
+    "naked-single":"Naked single", "hidden-single":"Hidden single",
+    pointingPair:"Pointing pair", pointingTriple:"Pointing triple",
+    "box-line":"Box line reduction",
+    nakedPair:"Naked pair", nakedTriple:"Naked triple",
+    hiddenPair:"Hidden pair", hiddenTriple:"Hidden triple",
+    "x-wing":"X-Wing"
+  },
+
+  dead: {
+    noSolution:["No solution",
+      "These clues contradict each other, so this board has no completion at all. There is no next move to explain."],
+    tooMany:["Too many solutions",
+      "This board has more than one valid completion, so there is no single correct next move. Add a clue or two and it will have one."],
+    wrong:(n)=>["Wrong number on the board",
+      (n===1 ? "One of your numbers does not belong" : n+" of your numbers do not belong")
+      +", so nothing follows logically from here. Check will mark "+(n===1?"it":"them")+" in red."],
+    beyond:["Beyond me",
+      "Finishing this needs a technique I cannot explain yet. I can still show you the answer for one cell."],
+    revealCell:"Reveal a cell"
+  },
+
+  msg: {
+    badLength:(n)=> "Found "+n+" cells in that text, and a sudoku needs 81. Use 0 or a dot for an empty cell.",
+    loaded:(n,dupes)=> "Loaded "+n+" clues"+(dupes ? ", and "+dupes+" of them clash, marked in red." : "."),
+    copied:"Copied all 81 cells to the clipboard, and dropped them in the box too.",
+    copyManual:"Your board is in the box below, selected and ready to copy.",
+    lockedNone:(n)=> "Locked in "+n+" clues, and they contradict each other, so this board has no completion. Reveal and Check are off. Play it anyway, or go back and edit.",
+    lockedMany:(n)=> "Locked in "+n+" clues. More than one completion fits, so Check verifies the rules and looks ahead instead of comparing to a fixed answer.",
+    checkWrong:(n)=> n+" number"+(n===1?"":"s")+" do not belong. Marked in red for a moment.",
+    checkClean:"Everything placed so far is correct.",
+    checkDupes:(n)=> n+" cells break the one-per-row-column-box rule.",
+    checkAhead:"No duplicates, and the board can still be completed from here.",
+    checkStuck:"No duplicates, but the board can no longer be completed. Something placed earlier was wrong.",
+    revealStuck:"Nothing can be revealed: what is on the board already cannot be completed. Undo or erase a number first."
+  },
+
+  steps: {
+    "naked-single": (d, L) => [
+      "Start with everything "+L.cell(d.cell)+" can see: its row, its column and its box.",
+      "Between them they already use every digit except "+d.digit+".",
+      "Nothing else can go there, so "+L.cell(d.cell)+" is "+d.digit+"."
+    ],
+    "hidden-single": (d, L, u) => [
+      "Watch where "+d.digit+" already sits, and the rows and columns each one rules out.",
+      "Inside this "+L.unit[u.type]+" that leaves exactly one cell free to hold a "+d.digit+".",
+      "It is the only possibility left, so "+L.cell(d.cell)+" is "+d.digit+"."
+    ],
+    "pointing": (d, L, u) => [
+      "In this box, "+d.digit+" has only these places left.",
+      "They all sit in the same "+L.unit[d.axis]+", so this box takes its "+d.digit+" from that "+L.unit[d.axis]+" whichever cell wins.",
+      "That "+L.unit[d.axis]+" is spoken for, so "+d.digit+" is out everywhere else along it."
+    ],
+    "box-line": (d, L, u) => [
+      "In this "+L.unit[u.type]+", "+d.digit+" has only these places left.",
+      "They all fall inside one box, so that box takes its "+d.digit+" from this "+L.unit[u.type]+".",
+      "The rest of the box cannot have it, so "+d.digit+" is out of those cells."
+    ],
+    "naked-subset": (d, L, u) => [
+      "These "+d.n+" cells hold nothing but "+L.list(d.digits)+" between them.",
+      d.n+" cells, "+d.n+" digits. They will use every one of "+L.list(d.digits)+" up.",
+      "So nothing else in this "+L.unit[u.type]+" can be "+L.listOr(d.digits)+"."
+    ],
+    "hidden-subset": (d, L, u) => [
+      L.list(d.digits)+" have nowhere left in this "+L.unit[u.type]+" but these "+d.n+" cells.",
+      d.n+" digits with only "+d.n+" cells to share. Between them they fill all of them.",
+      "So those cells cannot be anything other than "+L.list(d.digits)+"."
+    ],
+    "x-wing": (d, L) => [
+      "In two "+L.unit[d.axis]+"s, "+d.digit+" is down to the same two places each.",
+      "The four line up as a rectangle. Whichever diagonal wins, both "+L.unit[d.crossAxis]+"s take a "+d.digit+" from it.",
+      "So "+d.digit+" is out of the rest of both "+L.unit[d.crossAxis]+"s."
+    ]
+  }
+},
+
+de: {
+  htmlLang: "de",
+  cell: (i) => "Z" + (((i/9)|0)+1) + "S" + ((i%9)+1),
+  unit: { row:"Zeile", column:"Spalte", box:"Block" },
+  list: (a) => a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" und "+a[a.length-1],
+  listOr: (a) => a.length<2 ? String(a[0]) : a.slice(0,-1).join(", ")+" oder "+a[a.length-1],
+
+  ui: {
+    easy:"Leicht", medium:"Mittel", hard:"Schwer", expert:"Experte",
+    newPuzzle:"Neues Rätsel", enterMine:"Eigenes eingeben", startPlaying:"Spielen",
+    cancel:"Abbrechen", pause:"Pause", resume:"Weiter",
+    padPlace:"Zahl setzen", padNote:"Notiz eintragen", padClue:"Vorgabe in die gewählte Zelle",
+    yourBoard:"Dein Feld", clearBoard:"Feld leeren", copyText:"Als Text kopieren", loadText:"Eingefügtes Rätsel laden",
+    ioPlaceholder:"Rätsel hier einfügen: 81 Zeichen, 0 oder . für leere Zellen. Zeilenumbrüche und Gitterlinien werden ignoriert.",
+    tools:"Werkzeuge", notesOn:"Notizen: an", notesOff:"Notizen: aus", fillNotes:"Notizen füllen",
+    erase:"Löschen", undo:"Rückgängig", hint:"Tipp", check:"Prüfen",
+    options:"Optionen", optAuto:"Notizen löschen, wenn ich eine Zahl setze", optConf:"Doppelte Zahlen markieren",
+    editing:"Vorgaben bearbeiten", conflict:(n)=> n+" im Konflikt",
+    back:"Zurück", next:"Weiter", dismiss:"Schließen",
+    placeThe:(d)=>"Die "+d+" setzen", ruleOut:"In meinen Notizen streichen",
+    paused:"Pausiert", pausedSub:"Das Feld ist verborgen, solange die Uhr steht.",
+    solved:"Gelöst", time:(t)=>"Zeit "+t, yourPuzzle:"Dein eigenes Rätsel",
+    generating:"Wird erstellt", generatingSub:"Vorgaben werden entfernt, solange genau eine Lösung bleibt.", wait:"Moment",
+    clearTitle:"Feld leeren?",
+    clearSub:"Ein eigenes Rätsel einzugeben löscht das aktuelle Feld. Abbrechen auf dem nächsten Bildschirm stellt es wieder her.",
+    clearIt:"Leeren", keepPlaying:"Weiterspielen",
+    checkTitle:"Dieses Feld hat keine Lösung, es gibt also nichts zu prüfen"
+  },
+
+  tech: {
+    /* "Letzte Möglichkeit" is the last digit for THIS cell, "Letzte Zelle" the
+       last cell for THIS digit. Plainer than the usual jargon and they stay
+       distinguishable, which "Nacktes/Verstecktes Single" does not manage. */
+    "naked-single":"Letzte Möglichkeit", "hidden-single":"Letzte Zelle",
+    pointingPair:"Zeigendes Paar", pointingTriple:"Zeigendes Tripel",
+    "box-line":"Block-Linie-Reduktion",
+    nakedPair:"Nacktes Paar", nakedTriple:"Nacktes Tripel",
+    hiddenPair:"Verstecktes Paar", hiddenTriple:"Verstecktes Tripel",
+    "x-wing":"X-Wing"
+  },
+
+  dead: {
+    noSolution:["Keine Lösung",
+      "Diese Vorgaben widersprechen sich, das Feld lässt sich gar nicht vervollständigen. Es gibt keinen nächsten Zug zu erklären."],
+    tooMany:["Zu viele Lösungen",
+      "Dieses Feld hat mehr als eine gültige Lösung, es gibt also keinen eindeutig richtigen nächsten Zug. Ein oder zwei Vorgaben mehr, und es hat einen."],
+    wrong:(n)=>["Falsche Zahl im Feld",
+      (n===1 ? "Eine deiner Zahlen gehört nicht dorthin" : n+" deiner Zahlen gehören nicht dorthin")
+      +", daher folgt von hier aus nichts mehr logisch. Prüfen markiert "+(n===1?"sie":"sie")+" rot."],
+    beyond:["Zu schwer für mich",
+      "Das hier braucht eine Technik, die ich noch nicht erklären kann. Eine einzelne Zelle kann ich dir trotzdem aufdecken."],
+    revealCell:"Zelle aufdecken"
+  },
+
+  msg: {
+    badLength:(n)=> n+" Zellen in diesem Text gefunden, ein Sudoku braucht 81. Nutze 0 oder einen Punkt für leere Zellen.",
+    loaded:(n,dupes)=> n+" Vorgaben geladen"+(dupes ? ", davon "+dupes+" im Konflikt, rot markiert." : "."),
+    copied:"Alle 81 Zellen in die Zwischenablage kopiert und zusätzlich ins Feld unten gesetzt.",
+    copyManual:"Dein Feld steht unten im Textfeld, markiert und bereit zum Kopieren.",
+    lockedNone:(n)=> n+" Vorgaben übernommen, aber sie widersprechen sich, das Feld hat keine Lösung. Aufdecken und Prüfen sind aus. Spiel trotzdem, oder geh zurück und ändere sie.",
+    lockedMany:(n)=> n+" Vorgaben übernommen. Es passt mehr als eine Lösung, daher prüft Prüfen die Regeln und schaut voraus, statt mit einer festen Lösung zu vergleichen.",
+    checkWrong:(n)=> n+(n===1?" Zahl gehört":" Zahlen gehören")+" nicht dorthin. Kurz rot markiert.",
+    checkClean:"Alles bisher Gesetzte ist richtig.",
+    checkDupes:(n)=> n+" Zellen verletzen die Regel, dass jede Ziffer pro Zeile, Spalte und Block nur einmal vorkommt.",
+    checkAhead:"Keine Doppelten, und das Feld lässt sich von hier aus noch vervollständigen.",
+    checkStuck:"Keine Doppelten, aber das Feld lässt sich nicht mehr vervollständigen. Etwas früher Gesetztes war falsch.",
+    revealStuck:"Es lässt sich nichts aufdecken: Was schon im Feld steht, lässt sich nicht vervollständigen. Nimm erst eine Zahl zurück oder lösche sie."
+  },
+
+  steps: {
+    "naked-single": (d, L) => [
+      "Sieh dir an, was "+L.cell(d.cell)+" alles sehen kann: die Zeile, die Spalte und den Block.",
+      "Zusammen belegen sie bereits jede Ziffer außer der "+d.digit+".",
+      "Nichts anderes passt dort hinein, also ist "+L.cell(d.cell)+" eine "+d.digit+"."
+    ],
+    "hidden-single": (d, L, u) => [
+      "Achte darauf, wo die "+d.digit+" schon steht, und welche Zeilen und Spalten dadurch wegfallen.",
+      "In "+(u.type==="box" ? "diesem Block" : u.type==="row" ? "dieser Zeile" : "dieser Spalte")+" bleibt damit genau eine Zelle frei für eine "+d.digit+".",
+      "Es ist die einzige Möglichkeit, also ist "+L.cell(d.cell)+" eine "+d.digit+"."
+    ],
+    "pointing": (d, L, u) => [
+      "In diesem Block bleiben für die "+d.digit+" nur noch diese Zellen.",
+      "Sie liegen alle in derselben "+L.unit[d.axis]+". Der Block holt seine "+d.digit+" also aus dieser "+L.unit[d.axis]+", egal welche Zelle es wird.",
+      "Damit ist die "+L.unit[d.axis]+" vergeben, und die "+d.digit+" fällt überall sonst darin weg."
+    ],
+    "box-line": (d, L, u) => [
+      "In "+(u.type==="row" ? "dieser Zeile" : "dieser Spalte")+" bleiben für die "+d.digit+" nur noch diese Zellen.",
+      "Sie liegen alle in einem Block. Dieser Block holt seine "+d.digit+" also aus "+(u.type==="row" ? "dieser Zeile" : "dieser Spalte")+".",
+      "Der Rest des Blocks kann sie nicht haben, die "+d.digit+" fällt dort weg."
+    ],
+    "naked-subset": (d, L, u) => [
+      "Diese "+d.n+" Zellen enthalten zusammen nichts als "+L.list(d.digits)+".",
+      d.n+" Zellen, "+d.n+" Ziffern. Sie verbrauchen "+L.list(d.digits)+" vollständig.",
+      "Also kann nichts anderes in "+(u.type==="box" ? "diesem Block" : u.type==="row" ? "dieser Zeile" : "dieser Spalte")+" eine "+L.listOr(d.digits)+" sein."
+    ],
+    "hidden-subset": (d, L, u) => [
+      L.list(d.digits)+" haben in "+(u.type==="box" ? "diesem Block" : u.type==="row" ? "dieser Zeile" : "dieser Spalte")+" nur noch in diesen "+d.n+" Zellen Platz.",
+      d.n+" Ziffern für nur "+d.n+" Zellen. Zusammen füllen sie alle davon.",
+      "Also können diese Zellen nichts anderes sein als "+L.list(d.digits)+"."
+    ],
+    "x-wing": (d, L) => [
+      "In zwei "+(d.axis==="row"?"Zeilen":"Spalten")+" bleiben für die "+d.digit+" jeweils dieselben zwei Stellen.",
+      "Die vier bilden ein Rechteck. Welche Diagonale auch gewinnt, beide "+(d.crossAxis==="row"?"Zeilen":"Spalten")+" holen ihre "+d.digit+" daraus.",
+      "Also fällt die "+d.digit+" im Rest beider "+(d.crossAxis==="row"?"Zeilen":"Spalten")+" weg."
+    ]
+  }
+}
+
+};
+
+let LANG = "en";
+const LP = () => I18N[LANG];
+const tr = (k) => LP().ui[k];
 
 /* ---------- geometry ---------- */
 const peers = [];
@@ -795,94 +1037,93 @@ function hLines(cells){
   return Array.from(out);
 }
 
-function hintSteps(h){
-  const d = h.data || {};
+function techLabel(h){
+  const T = LP().tech;
   switch(h.kind){
+    case "pointing":        return h.data.spots.length===2 ? T.pointingPair : T.pointingTriple;
+    case "naked-subset-2":  return T.nakedPair;
+    case "naked-subset-3":  return T.nakedTriple;
+    case "hidden-subset-2": return T.hiddenPair;
+    case "hidden-subset-3": return T.hiddenTriple;
+    default:                return T[h.kind] || h.label;
+  }
+}
 
+function hintSteps(h){
+  const d = h.data || {}, LL = LP(), S = LL.steps, u = h.unit || {type:"box"};
+  let texts, shows;
+  switch(h.kind){
     case "naked-single": {
       const seen = HINT_PEERS[d.cell];
-      return [
-        { text:"Start with everything "+hName(d.cell)+" can see: its row, its column and its box.",
-          show:{ covered:seen, target:[d.cell] } },
-        { text:"Between them they already use every digit except "+d.digit+".",
-          show:{ covered:seen, evidence:seen, target:[d.cell] } },
-        { text:"Nothing else can go there, so "+hName(d.cell)+" is "+d.digit+".",
-          show:{ covered:seen, evidence:seen, target:[d.cell], preview:{cell:d.cell, digit:d.digit} } }
+      texts = S["naked-single"](d, LL, u);
+      shows = [
+        { covered:seen, target:[d.cell] },
+        { covered:seen, evidence:seen, target:[d.cell] },
+        { covered:seen, evidence:seen, target:[d.cell], preview:{cell:d.cell, digit:d.digit} }
       ];
+      break;
     }
-
     case "hidden-single": {
       const wash = hLines(d.blockers);
-      return [
-        { text:"Watch where "+d.digit+" already sits, and the rows and columns each one rules out.",
-          show:{ evidence:d.blockers, covered:wash } },
-        { text:"Inside this "+h.unit.type+" that leaves exactly one cell free to hold a "+d.digit+".",
-          show:{ evidence:d.blockers, covered:wash, frame:h.unit, target:[d.cell] } },
-        { text:"It is the only possibility left, so "+hName(d.cell)+" is "+d.digit+".",
-          show:{ evidence:d.blockers, covered:wash, frame:h.unit, target:[d.cell], preview:{cell:d.cell, digit:d.digit} } }
+      texts = S["hidden-single"](d, LL, u);
+      shows = [
+        { evidence:d.blockers, covered:wash },
+        { evidence:d.blockers, covered:wash, frame:u, target:[d.cell] },
+        { evidence:d.blockers, covered:wash, frame:u, target:[d.cell], preview:{cell:d.cell, digit:d.digit} }
       ];
+      break;
     }
-
     case "pointing": {
       const box = {type:"box", index:d.box, cells:HINT_BOXES[d.box]};
-      return [
-        { text:"In this box, "+d.digit+" has only these places left.",
-          show:{ frame:box, target:d.spots } },
-        { text:"They all sit in the same "+d.axis+", so this box takes its "+d.digit+" from that "+d.axis+" whichever cell wins.",
-          show:{ frame:h.unit, target:d.spots } },
-        { text:"That "+d.axis+" is spoken for, so "+d.digit+" is out everywhere else along it.",
-          show:{ frame:h.unit, target:d.spots, cut:h.eliminations } }
+      texts = S["pointing"](d, LL, u);
+      shows = [
+        { frame:box, target:d.spots },
+        { frame:u,   target:d.spots },
+        { frame:u,   target:d.spots, cut:h.eliminations }
       ];
+      break;
     }
-
     case "box-line": {
       const box = {type:"box", index:d.box, cells:HINT_BOXES[d.box]};
-      return [
-        { text:"In this "+h.unit.type+", "+d.digit+" has only these places left.",
-          show:{ frame:h.unit, target:d.spots } },
-        { text:"They all fall inside one box, so that box takes its "+d.digit+" from this "+h.unit.type+".",
-          show:{ frame:box, target:d.spots } },
-        { text:"The rest of the box cannot have it, so "+d.digit+" is out of those cells.",
-          show:{ frame:box, target:d.spots, cut:h.eliminations } }
+      texts = S["box-line"](d, LL, u);
+      shows = [
+        { frame:u,   target:d.spots },
+        { frame:box, target:d.spots },
+        { frame:box, target:d.spots, cut:h.eliminations }
       ];
+      break;
     }
-
     case "naked-subset-2": case "naked-subset-3": {
-      const ds = hList(d.digits);
-      return [
-        { text:"These "+d.n+" cells hold nothing but "+ds+" between them.",
-          show:{ frame:h.unit, target:d.cells } },
-        { text:d.n+" cells, "+d.n+" digits. They will use every one of "+ds+" up.",
-          show:{ frame:h.unit, target:d.cells, evidence:d.cells } },
-        { text:"So nothing else in this "+h.unit.type+" can be "+hListOr(d.digits)+".",
-          show:{ frame:h.unit, target:d.cells, cut:h.eliminations } }
+      texts = S["naked-subset"](d, LL, u);
+      shows = [
+        { frame:u, target:d.cells },
+        { frame:u, target:d.cells, evidence:d.cells },
+        { frame:u, target:d.cells, cut:h.eliminations }
       ];
+      break;
     }
-
     case "hidden-subset-2": case "hidden-subset-3": {
-      const ds = hList(d.digits);
-      return [
-        { text:ds+" have nowhere left in this "+h.unit.type+" but these "+d.n+" cells.",
-          show:{ frame:h.unit, target:d.cells } },
-        { text:d.n+" digits with only "+d.n+" cells to share. Between them they fill all of them.",
-          show:{ frame:h.unit, target:d.cells, evidence:d.cells } },
-        { text:"So those cells cannot be anything other than "+ds+".",
-          show:{ frame:h.unit, target:d.cells, cut:h.eliminations } }
+      texts = S["hidden-subset"](d, LL, u);
+      shows = [
+        { frame:u, target:d.cells },
+        { frame:u, target:d.cells, evidence:d.cells },
+        { frame:u, target:d.cells, cut:h.eliminations }
       ];
+      break;
     }
-
     case "x-wing": {
-      return [
-        { text:"In two "+d.axis+"s, "+d.digit+" is down to the same two places each.",
-          show:{ target:d.cells } },
-        { text:"The four line up as a rectangle. Whichever diagonal wins, both "+d.crossAxis+"s take a "+d.digit+" from it.",
-          show:{ target:d.cells, evidence:d.cells } },
-        { text:"So "+d.digit+" is out of the rest of both "+d.crossAxis+"s.",
-          show:{ target:d.cells, cut:h.eliminations } }
+      texts = S["x-wing"](d, LL, u);
+      shows = [
+        { target:d.cells },
+        { target:d.cells, evidence:d.cells },
+        { target:d.cells, cut:h.eliminations }
       ];
+      break;
     }
+    default:
+      return [{ text:h.text, show:{ target:h.place?[h.place.cell]:[], cut:h.eliminations } }];
   }
-  return [{ text:h.text, show:{ target:h.place?[h.place.cell]:[], because:h.because, cut:h.eliminations } }];
+  return texts.map((text, i) => ({ text, show: shows[i] }));
 }
 
 /* Easiest first. The order IS the difficulty ranking, so the first hit is
@@ -1083,14 +1324,14 @@ function render(){
 
   padEl.classList.toggle("noting", !setup && state.notesMode);
   padEl.classList.toggle("clueing", setup);
-  $("#pad-label").textContent = setup ? "Type a clue into the selected cell" : (state.notesMode ? "Pencil in a note" : "Place a number");
-  $("#t-notes").textContent = "Notes: " + (state.notesMode ? "on" : "off");
+  $("#pad-label").textContent = setup ? tr("padClue") : (state.notesMode ? tr("padNote") : tr("padPlace"));
+  $("#t-notes").textContent = state.notesMode ? tr("notesOn") : tr("notesOff");
   $("#t-notes").classList.toggle("on", state.notesMode);
   $("#t-undo").disabled = state.history.length===0;
   $("#cancelsetup").disabled = !setupBackup;
   const noSol = state.solCount===0;
   $("#t-check").disabled = noSol;
-  $("#t-check").title = noSol ? "This board has no completion, so there is nothing to check against" : "";
+  $("#t-check").title = noSol ? tr("checkTitle") : "";
   renderProvenance(bad.size);
   save();
 }
@@ -1099,7 +1340,7 @@ function renderProvenance(badCount){
   const p=$("#prov");
   const chips=[];
   /* Warnings only. A label saying what you are already looking at is not news. */
-  if(isSetup() && badCount) chips.push(['warn', badCount+' in conflict']);
+  if(isSetup() && badCount) chips.push(['warn', tr('conflict')(badCount)]);
   p.innerHTML = chips.map(([cls,txt])=>'<span class="chip '+cls+'">'+txt+'</span>').join('');
 }
 
@@ -1169,20 +1410,24 @@ function hintCandNow(){ if(!hintCand) hintCand = hintCandidates(combined()); ret
 
 function clearHint(){
   currentHint = null; hintApply = null;
-  hintStepList = null; hintStepAt = 0;
+  hintStepList = null; hintStepAt = 0; deadSpec = null;
   $("#hint").classList.remove("show","dead");
   $("#hint-frame").classList.remove("show");
 }
 
 /* A hint with nothing to walk through: a refusal, or a board beyond the engine. */
+let deadSpec = null;
 function paintHint(o){
-  $("#hint-kind").textContent = o.kind;
-  $("#hint-text").textContent = o.text;
+  deadSpec = o;
+  const D = LP().dead;
+  const pair = o.kind==="wrong" ? D.wrong(o.n) : D[o.kind];
+  $("#hint-kind").textContent = pair[0];
+  $("#hint-text").textContent = pair[1];
   $("#hint").classList.toggle("dead", true);
   $("#hint-dots").innerHTML = "";
   $("#hint-back").style.display = "none";
   const nx = $("#hint-next");
-  if(o.apply){ nx.textContent = o.apply; nx.style.display = ""; hintApply = o.onApply; }
+  if(o.onApply){ nx.textContent = D.revealCell; nx.style.display = ""; hintApply = o.onApply; }
   else { nx.style.display = "none"; hintApply = null; }
   $("#hint").classList.add("show");
 }
@@ -1190,7 +1435,7 @@ function paintHint(o){
 function paintStep(){
   const h = currentHint, steps = hintStepList;
   const last = hintStepAt === steps.length - 1;
-  $("#hint-kind").textContent = h.label;
+  $("#hint-kind").textContent = techLabel(h);
   $("#hint-text").textContent = steps[hintStepAt].text;
   $("#hint").classList.remove("dead");
   $("#hint-dots").innerHTML = steps.map((_,i) =>
@@ -1200,7 +1445,7 @@ function paintStep(){
   bk.disabled = hintStepAt === 0;
   const nx = $("#hint-next");
   nx.style.display = "";
-  nx.textContent = last ? (h.place ? "Place the " + h.place.digit : "Rule it out in my notes") : "Next";
+  nx.textContent = last ? (h.place ? tr("placeThe")(h.place.digit) : tr("ruleOut")) : tr("next");
   hintApply = last ? applyHint : function(){ hintStepAt++; paintStep(); render(); };
   $("#hint").classList.add("show");
 }
@@ -1210,22 +1455,18 @@ function showHint(){
   clearHint();
 
   if(state.solCount === 0){
-    paintHint({dead:true, kind:"No solution",
-      text:"These clues contradict each other, so this board has no completion at all. There is no next move to explain."});
+    paintHint({kind:"noSolution"});
     return render();
   }
   if(state.solCount !== 1){
-    paintHint({dead:true, kind:"Too many solutions",
-      text:"This board has more than one valid completion, so there is no single correct next move. Add a clue or two and it will have one."});
+    paintHint({kind:"tooMany"});
     return render();
   }
 
   let wrong = 0;
   for(let i=0;i<81;i++) if(!state.puzzle[i] && state.values[i] && state.values[i]!==state.solution[i]) wrong++;
   if(wrong){
-    paintHint({dead:true, kind:"Wrong number on the board",
-      text:(wrong===1 ? "One of your numbers does not belong" : wrong+" of your numbers do not belong")
-           +", so nothing follows logically from here. Check will mark "+(wrong===1?"it":"them")+" in red."});
+    paintHint({kind:"wrong", n:wrong});
     return render();
   }
 
@@ -1233,9 +1474,7 @@ function showHint(){
   for(let i=0;i<81;i++) if(!grid[i]){
     const h = findHint(grid, hintCandNow());
     if(!h){
-      paintHint({dead:true, kind:"Beyond me",
-        text:"Finishing this needs a technique I cannot explain yet. I can still show you the answer for one cell.",
-        apply:"Reveal a cell", onApply:()=>{ clearHint(); revealCell(); }});
+      paintHint({kind:"beyond", onApply:()=>{ clearHint(); revealCell(); }});
       return render();
     }
     currentHint = h;
@@ -1317,7 +1556,7 @@ function revealCell(){
     setValue(target, known[target], true);
   } else {
     const sol = solveFrom(combined());
-    if(!sol){ note("Nothing can be revealed: what is on the board already cannot be completed. Undo or erase a number first.", true); return; }
+    if(!sol){ note(LP().msg.revealStuck, true); return; }
     if(state.puzzle[target] || state.values[target]){
       target=-1;
       for(let k=0;k<81;k++) if(!at(k)){ target=k; break; }
@@ -1335,14 +1574,13 @@ function check(){
     const wrong=new Set();
     for(let i=0;i<81;i++) if(!state.puzzle[i] && state.values[i] && state.values[i]!==state.solution[i]) wrong.add(i);
     flash(wrong);
-    note(wrong.size ? wrong.size+" number"+(wrong.size===1?"":"s")+" do not belong. Marked in red for a moment."
-                    : "Everything placed so far is correct.");
+    note(wrong.size ? LP().msg.checkWrong(wrong.size) : LP().msg.checkClean);
   } else {
     const dupes = conflictSet();
-    if(dupes.size){ flash(dupes); note(dupes.size+" cells break the one-per-row-column-box rule.", true); return; }
+    if(dupes.size){ flash(dupes); note(LP().msg.checkDupes(dupes.size), true); return; }
     const sol = solveFrom(combined());
-    if(sol) note("No duplicates, and the board can still be completed from here.");
-    else { flash(new Set()); note("No duplicates, but the board can no longer be completed. Something placed earlier was wrong.", true); }
+    if(sol) note(LP().msg.checkAhead);
+    else { flash(new Set()); note(LP().msg.checkStuck, true); }
   }
 }
 function flash(set){
@@ -1359,8 +1597,7 @@ function checkSolved(){
   for(let i=0;i<81;i++) if(!at(i)) return;
   if(conflictSet().size) return;
   state.solved=true; state.running=false;
-  const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
-  showVeil({title:"Solved", sub:src+".", stat:"Time "+fmt(state.elapsed), primary:"New puzzle", onPrimary:()=>newGame($("#diff").value)});
+  showVeil({kind:"solved", onPrimary:()=>newGame($("#diff").value)});
   note("");
   render();
 }
@@ -1373,13 +1610,7 @@ function requestSetup(){
   let has=false;
   for(let i=0;i<81;i++) if(state.puzzle[i] || state.values[i]){ has=true; break; }
   if(isSetup() || !has){ enterSetup(); return; }
-  showVeil({
-    title: "Clear the board?",
-    sub: "Entering your own puzzle wipes what is on the grid. Cancel on the next screen puts it back.",
-    primary: "Clear it",
-    onPrimary: () => { hideVeil(); enterSetup(); },
-    secondary: "Keep playing"
-  });
+  showVeil({ kind:"confirmClear", onPrimary: () => { hideVeil(); enterSetup(); } });
 }
 
 function enterSetup(){
@@ -1436,11 +1667,11 @@ function startPlaying(){
   clearFlash(); render();
 
   if(state.solCount===0){
-    note("Locked in "+clues+" clues, and they contradict each other, so this board has no completion. Reveal and Check are off. Play it anyway, or go back and edit.", true);
+    note(LP().msg.lockedNone(clues), true);
   } else if(state.solCount===1){
     note("");
   } else {
-    note("Locked in "+clues+" clues. More than one completion fits, so Check verifies the rules and looks ahead instead of comparing to a fixed answer.");
+    note(LP().msg.lockedMany(clues));
   }
   checkSolved();
 }
@@ -1456,7 +1687,7 @@ function loadText(){
   const raw = $("#io").value;
   const chars = raw.replace(/[^0-9.]/g, "");
   if(chars.length !== 81){
-    note("Found "+chars.length+" cells in that text, and a sudoku needs 81. Use 0 or a dot for an empty cell.", true);
+    note(LP().msg.badLength(chars.length), true);
     return;
   }
   pushHistory();
@@ -1467,7 +1698,7 @@ function loadText(){
   }
   hintInvalidate(); clearFlash(); render();
   const dupes = conflictSet().size;
-  note("Loaded "+clueCount()+" clues"+(dupes ? ", and "+dupes+" of them clash, marked in red." : "."), dupes>0);
+  note(LP().msg.loaded(clueCount(), dupes), dupes>0);
 }
 function toText(){
   let s="";
@@ -1485,8 +1716,32 @@ function copyText(){
       navigator.clipboard.writeText(s); done=true;
     }
   }catch(e){ done=false; }
-  note(done ? "Copied all 81 cells to the clipboard, and dropped them in the box too."
-            : "Your board is in the box below, selected and ready to copy.");
+  note(done ? LP().msg.copied : LP().msg.copyManual);
+}
+
+/* ---------- language ---------- */
+function applyLang(lang){
+  LANG = (lang === "de") ? "de" : "en";
+  try { document.documentElement.lang = LP().htmlLang; } catch(e){ /* host owns <html> */ }
+
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const v = tr(el.dataset.i18n);
+    if (typeof v === "string") el.textContent = v;
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const v = tr(el.dataset.i18nPh);
+    if (typeof v === "string") el.placeholder = v;
+  });
+  $("#lang").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+  $("#pause").textContent = state.paused ? tr("resume") : tr("pause");
+
+  /* Anything already on screen gets rebuilt rather than left in the old language. */
+  if (veilSpec) showVeil(veilSpec);
+  if (currentHint){ hintStepList = hintSteps(currentHint); paintStep(); }
+  else if (deadSpec) paintHint(deadSpec);
+  note("");
+  render();
+  save();
 }
 
 /* ---------- selection ---------- */
@@ -1511,27 +1766,44 @@ setInterval(()=>{
 }, 1000);
 
 /* ---------- veil ---------- */
-let veilPrimary=null, veilSecondary=null;
-function showVeil(o){
-  $("#veil-title").textContent = o.title;
-  $("#veil-sub").textContent   = o.sub || "";
-  $("#veil-stat").textContent  = o.stat || "";
+let veilPrimary=null, veilSecondary=null, veilSpec=null;
+/* Stores what the overlay IS, not the words it showed, so a language switch
+   can repaint it instead of dropping the user out of a paused game. */
+function showVeil(spec){
+  veilSpec = spec;
+  const U = LP().ui;
+  let title="", sub="", stat="", primary="", secondary=null, busy=false;
+  switch(spec.kind){
+    case "paused":
+      title=U.paused; sub=U.pausedSub; primary=U.resume; break;
+    case "solved":
+      title=U.solved; primary=U.newPuzzle;
+      sub = (state.source==="custom" ? U.yourPuzzle : (U[state.source]||state.source)) + ".";
+      stat = U.time(fmt(state.elapsed)); break;
+    case "generating":
+      title=U.generating; sub=U.generatingSub; primary=U.wait; busy=true; break;
+    case "confirmClear":
+      title=U.clearTitle; sub=U.clearSub; primary=U.clearIt; secondary=U.keepPlaying; break;
+  }
+  $("#veil-title").textContent = title;
+  $("#veil-sub").textContent   = sub;
+  $("#veil-stat").textContent  = stat;
   const pri = $("#veil-btn");
-  pri.textContent = o.primary;
-  pri.disabled = !!o.busy;
-  veilPrimary = o.onPrimary || null;
+  pri.textContent = primary;
+  pri.disabled = busy;
+  veilPrimary = spec.onPrimary || null;
   const sec = $("#veil-btn2");
-  if(o.secondary){ sec.textContent = o.secondary; sec.style.display = ""; veilSecondary = o.onSecondary || hideVeil; }
-  else { sec.style.display = "none"; veilSecondary = null; }
+  if(secondary){ sec.textContent = secondary; sec.style.display=""; veilSecondary = spec.onSecondary || hideVeil; }
+  else { sec.style.display="none"; veilSecondary = null; }
   $("#veil").classList.add("show");
 }
-function hideVeil(){ $("#veil").classList.remove("show"); veilPrimary=null; veilSecondary=null; }
+function hideVeil(){ $("#veil").classList.remove("show"); veilPrimary=null; veilSecondary=null; veilSpec=null; }
 function togglePause(){
   if(state.solved || isSetup()) return;
   state.paused=!state.paused;
-  $("#pause").textContent = state.paused ? "Resume" : "Pause";
+  $("#pause").textContent = state.paused ? tr("resume") : tr("pause");
   $("#clock").classList.toggle("paused", state.paused);
-  if(state.paused) showVeil({title:"Paused", sub:"The board is hidden while the clock is stopped.", primary:"Resume", onPrimary:togglePause});
+  if(state.paused) showVeil({kind:"paused", onPrimary:togglePause});
   else hideVeil();
 }
 
@@ -1547,6 +1819,7 @@ function save(){
         revealed:Array.from(state.revealed),
         selected:state.selected, notesMode:state.notesMode,
         autoClear:state.autoClear, flagDupes:state.flagDupes,
+        lang:LANG,
         mode:state.mode, source:state.source, givens:state.givens, solCount:state.solCount,
         elapsed:state.elapsed, solved:state.solved
       }));
@@ -1567,6 +1840,7 @@ function load(){
     state.notesMode = !!s.notesMode;
     state.autoClear = s.autoClear !== false;
     state.flagDupes = s.flagDupes !== false;
+    LANG = s.lang === "de" ? "de" : "en";
     state.mode = s.mode==="setup" ? "setup" : "play";
     state.source = s.source || "medium";
     state.solCount = (s.solCount===0||s.solCount===2) ? s.solCount : 1;
@@ -1586,7 +1860,7 @@ function note(msg, alert){
 function newGame(level){
   state.source = level;
   note("");
-  showVeil({title:"Generating", sub:"Digging out clues while keeping exactly one solution.", primary:"Wait", busy:true});
+  showVeil({kind:"generating"});
   setTimeout(()=>{
     const { puzzle, solution, givens } = makePuzzle(level);
     state.puzzle.set(puzzle); state.solution.set(solution);
@@ -1656,6 +1930,10 @@ $("#io-clear").addEventListener("click", clearBoard);
 $("#io-load").addEventListener("click", loadText);
 $("#io-copy").addEventListener("click", copyText);
 $("#pause").addEventListener("click", togglePause);
+$("#lang").addEventListener("click",(e)=>{
+  const b = e.target.closest("button[data-lang]");
+  if(b) applyLang(b.dataset.lang);
+});
 $("#veil-btn").addEventListener("click", ()=>{ if(veilPrimary) veilPrimary(); });
 $("#veil-btn2").addEventListener("click", ()=>{ if(veilSecondary) veilSecondary(); });
 
@@ -1685,6 +1963,7 @@ document.addEventListener("visibilitychange", save);
 
 /* ---------- boot ---------- */
 const restored = load();
+applyLang(LANG);
 $("#diff").value = ["easy","medium","hard","expert"].indexOf(state.source)>=0 ? state.source : "medium";
 $("#o-auto").checked = state.autoClear;
 $("#o-conf").checked = state.flagDupes;
@@ -1700,8 +1979,7 @@ if(restored){
   };
   render();
   if(state.solved){
-    const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
-    showVeil({title:"Solved", sub:src+".", stat:"Time "+fmt(state.elapsed), primary:"New puzzle", onPrimary:()=>newGame($("#diff").value)});
+    showVeil({kind:"solved", onPrimary:()=>newGame($("#diff").value)});
   }
   note("");
 } else {

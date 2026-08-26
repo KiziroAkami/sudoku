@@ -41,7 +41,7 @@ the app. After it, the icon works with no connection at all.
 ## Updating it later
 
 Edit `index.html`, then bump `VERSION` in `sw.js` (for example to
-`sudoku-v9`) and push. The version string is the cache key, so an installed
+`sudoku-v10`) and push. The version string is the cache key, so an installed
 phone keeps serving its old copy until that value changes.
 
 ## What is in here
@@ -53,6 +53,16 @@ phone keeps serving its old copy until that value changes.
 | `manifest.webmanifest` | Name, icons, colours, and standalone display mode |
 | `icons/` | App icons, including the Apple touch icon and a maskable variant |
 | `.nojekyll` | Tells GitHub Pages to serve the files as they are |
+
+## Languages
+
+English and German, switched with the EN/DE toggle at the top right. The choice
+is saved, and anything already on screen is rebuilt rather than left behind, so
+switching mid-hint keeps you on the same stage.
+
+The hint explanations are generated sentences, not stored strings, so German has
+its own phrasing rather than a word-for-word swap. Cell references follow each
+language: R4C7 in English, Z4S7 in German.
 
 ## Notes on the board
 

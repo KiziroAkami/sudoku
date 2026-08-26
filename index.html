@@ -241,6 +241,7 @@ select.btn{padding-right:8px}
 .veil.show{display:grid}
 .veil h2{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:clamp(26px,5vw,38px);margin:0 0 6px}
 .veil p{margin:0 0 14px;color:var(--muted);font-size:14px;max-width:34ch}
+.veil-actions{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
 .veil .stat{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:15px;font-variant-numeric:tabular-nums}
 
 /* ---------- rail ---------- */
@@ -327,7 +328,10 @@ textarea#io::placeholder{color:var(--muted)}
           <h2 id="veil-title">Paused</h2>
           <p id="veil-sub">The board is hidden while the clock is stopped.</p>
           <div class="stat" id="veil-stat"></div>
-          <div style="margin-top:16px"><button class="btn on" id="veil-btn">Resume</button></div>
+          <div class="veil-actions">
+            <button class="btn on" id="veil-btn">Resume</button>
+            <button class="btn ghost" id="veil-btn2">Keep playing</button>
+          </div>
         </div>
       </div>
     </div>
@@ -740,12 +744,28 @@ function checkSolved(){
   if(conflictSet().size) return;
   state.solved=true; state.running=false;
   const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
-  showVeil("Solved", src+".", "Time "+fmt(state.elapsed), "New puzzle");
+  showVeil({title:"Solved", sub:src+".", stat:"Time "+fmt(state.elapsed), primary:"New puzzle", onPrimary:()=>newGame($("#diff").value)});
   note("");
   render();
 }
 
 /* ---------- setup mode ---------- */
+/* Entering setup wipes the grid, so ask first when there is something to lose.
+   An empty board has nothing to confirm. */
+function requestSetup(){
+  if(state.paused) togglePause();
+  let has=false;
+  for(let i=0;i<81;i++) if(state.puzzle[i] || state.values[i]){ has=true; break; }
+  if(isSetup() || !has){ enterSetup(); return; }
+  showVeil({
+    title: "Clear the board?",
+    sub: "Entering your own puzzle wipes what is on the grid. Cancel on the next screen puts it back.",
+    primary: "Clear it",
+    onPrimary: () => { hideVeil(); enterSetup(); },
+    secondary: "Keep playing"
+  });
+}
+
 function enterSetup(){
   if(state.paused) togglePause();
   setupBackup = {
@@ -872,20 +892,27 @@ setInterval(()=>{
 }, 1000);
 
 /* ---------- veil ---------- */
-function showVeil(title, sub, stat, btn){
-  $("#veil-title").textContent=title;
-  $("#veil-sub").textContent=sub;
-  $("#veil-stat").textContent=stat||"";
-  $("#veil-btn").textContent=btn;
+let veilPrimary=null, veilSecondary=null;
+function showVeil(o){
+  $("#veil-title").textContent = o.title;
+  $("#veil-sub").textContent   = o.sub || "";
+  $("#veil-stat").textContent  = o.stat || "";
+  const pri = $("#veil-btn");
+  pri.textContent = o.primary;
+  pri.disabled = !!o.busy;
+  veilPrimary = o.onPrimary || null;
+  const sec = $("#veil-btn2");
+  if(o.secondary){ sec.textContent = o.secondary; sec.style.display = ""; veilSecondary = o.onSecondary || hideVeil; }
+  else { sec.style.display = "none"; veilSecondary = null; }
   $("#veil").classList.add("show");
 }
-function hideVeil(){ $("#veil").classList.remove("show"); }
+function hideVeil(){ $("#veil").classList.remove("show"); veilPrimary=null; veilSecondary=null; }
 function togglePause(){
   if(state.solved || isSetup()) return;
   state.paused=!state.paused;
   $("#pause").textContent = state.paused ? "Resume" : "Pause";
   $("#clock").classList.toggle("paused", state.paused);
-  if(state.paused) showVeil("Paused","The board is hidden while the clock is stopped.","","Resume");
+  if(state.paused) showVeil({title:"Paused", sub:"The board is hidden while the clock is stopped.", primary:"Resume", onPrimary:togglePause});
   else hideVeil();
 }
 
@@ -940,8 +967,7 @@ function note(msg, alert){
 function newGame(level){
   state.source = level;
   note("");
-  showVeil("Generating", "Digging out clues while keeping exactly one solution.", "", "Wait");
-  $("#veil-btn").disabled = true;
+  showVeil({title:"Generating", sub:"Digging out clues while keeping exactly one solution.", primary:"Wait", busy:true});
   setTimeout(()=>{
     const { puzzle, solution, givens } = makePuzzle(level);
     state.puzzle.set(puzzle); state.solution.set(solution);
@@ -951,7 +977,6 @@ function newGame(level){
     state.givens=givens; state.solCount=1;
     state.mode="play"; page.dataset.mode="play";
     clearFlash();
-    $("#veil-btn").disabled=false;
     hideVeil();
     $("#clock").textContent="0:00";
     $("#clock").classList.remove("paused");
@@ -1000,17 +1025,15 @@ $("#o-auto").addEventListener("change",(e)=>{ state.autoClear=e.target.checked; 
 $("#o-conf").addEventListener("change",(e)=>{ state.flagDupes=e.target.checked; render(); });
 $("#diff").addEventListener("change",(e)=> newGame(e.target.value));
 $("#newgame").addEventListener("click",()=> newGame($("#diff").value));
-$("#custom").addEventListener("click", enterSetup);
+$("#custom").addEventListener("click", requestSetup);
 $("#startplay").addEventListener("click", startPlaying);
 $("#cancelsetup").addEventListener("click", cancelSetup);
 $("#io-clear").addEventListener("click", clearBoard);
 $("#io-load").addEventListener("click", loadText);
 $("#io-copy").addEventListener("click", copyText);
 $("#pause").addEventListener("click", togglePause);
-$("#veil-btn").addEventListener("click",()=>{
-  if(state.solved) newGame($("#diff").value);
-  else if(state.paused) togglePause();
-});
+$("#veil-btn").addEventListener("click", ()=>{ if(veilPrimary) veilPrimary(); });
+$("#veil-btn2").addEventListener("click", ()=>{ if(veilSecondary) veilSecondary(); });
 
 document.addEventListener("keydown",(e)=>{
   const t=e.target.tagName;
@@ -1025,7 +1048,10 @@ document.addEventListener("keydown",(e)=>{
     case "Backspace": case "Delete": case "0": e.preventDefault(); erase(state.selected); break;
     case "u": case "U": e.preventDefault(); undo(); break;
     case "Enter": if(isSetup()){ e.preventDefault(); startPlaying(); } break;
-    case "Escape": if(isSetup()){ e.preventDefault(); cancelSetup(); } break;
+    case "Escape":
+      if(veilSecondary){ e.preventDefault(); veilSecondary(); }
+      else if(isSetup()){ e.preventDefault(); cancelSetup(); }
+      break;
     case "n": case "N": if(!isSetup()){ e.preventDefault(); state.notesMode=!state.notesMode; render(); } break;
     case "h": case "H": if(!isSetup()){ e.preventDefault(); hint(); } break;
     case "p": case "P": if(!isSetup()){ e.preventDefault(); togglePause(); } break;
@@ -1051,7 +1077,7 @@ if(restored){
   render();
   if(state.solved){
     const src = state.source==="custom" ? "Your own puzzle" : (state.source.charAt(0).toUpperCase()+state.source.slice(1));
-    showVeil("Solved", src+".", "Time "+fmt(state.elapsed), "New puzzle");
+    showVeil({title:"Solved", sub:src+".", stat:"Time "+fmt(state.elapsed), primary:"New puzzle", onPrimary:()=>newGame($("#diff").value)});
   }
   note("");
 } else {

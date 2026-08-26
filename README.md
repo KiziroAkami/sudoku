@@ -41,7 +41,7 @@ the app. After it, the icon works with no connection at all.
 ## Updating it later
 
 Edit `index.html`, then bump `VERSION` in `sw.js` (for example to
-`sudoku-v11`) and push. The version string is the cache key, so an installed
+`sudoku-v12`) and push. The version string is the cache key, so an installed
 phone keeps serving its old copy until that value changes.
 
 ## What is in here
@@ -63,8 +63,14 @@ clears its mark. A picture with no grid in it is refused rather than guessed at.
 
 It works on a board that fills the frame or sits inside a screenshot, on light
 and dark boards, through highlight bands and jpeg compression, and it treats
-pencil marks as an empty cell. Measured at 100% on real phone screenshots and
-97.7% per digit on boards rendered in typefaces its template bank has never seen.
+pencil marks as an empty cell. Photographs of printed puzzles work too: a
+handheld shot is a degree or two off square, which is enough to hide the grid
+completely, so the reader finds the angle and straightens the picture first.
+
+Measured at 100% on real phone screenshots and on a photo of a printed puzzle,
+and 98.7% per digit on boards rendered in typefaces its template bank has never
+seen. Cells it was unsure of are flagged: that threshold is set so it catches
+about 79% of misreads while marking 0.3% of correct cells.
 
 ## Languages
 

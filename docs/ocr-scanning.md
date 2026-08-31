@@ -1,88 +1,99 @@
-# TODO: OCR board scanning
+# Reading a board from a picture
 
-Status: **not started**, deliberately parked. Design notes from the session of
-2026-08-26 so none of the reasoning has to be redone.
+Status: **shipped** (v11). This file was the design note while it was parked; it
+now records what was actually built, what it measures at, and what is still weak.
 
-## The goal
+## What it does
 
-From "Enter my own" on a blank board, upload or photograph a sudoku and have the
-81 cells filled in automatically, then land in setup mode for review before
-playing.
+**Scan a picture** in setup mode. Finds the board, reads the digits, lands in
+setup so the board can be reviewed before playing. Cells the reader was unsure
+about are outlined in red.
 
-## Pipeline
+Pipeline, in order:
 
-Five steps. Only step 2 is genuinely hard.
+1. Downscale to at most 1600px on the long edge.
+2. **Deskew.** Search for the rotation angle, coarse on a downscaled copy then
+   fine at full resolution, scored by how well a regular 9-division grid fits.
+   Skipped entirely when the picture is already square.
+3. **Find the grid.** Collect line candidates two ways (darker than the picture's
+   midtone, and darker or lighter than the pixels a few rows either side), then
+   FIT a 9-division grid to whatever was found. It locks on from as few as four
+   lines, so missing lines are survivable.
+4. **Extract ink per cell.** The background is whatever colour dominates that
+   cell and ink is whatever differs from it, so black on grey, blue on pale blue
+   and white on green all read without knowing the app's palette.
+5. **Classify** against a bank of 696 binary templates rendered from 40 font
+   faces, by per-pixel disagreement.
 
-1. **Get the image.** `<input type="file" accept="image/*">` gives camera or photo
-   library on iOS. No permission prompt for the library. Trivial.
-2. **Find the board and correct perspective.** See the fork below.
-3. **Split into 81 cells.** Trivial once step 2 is done.
-4. **Recognise each cell** as blank or 1-9.
-5. **Validate, flag low-confidence cells, and let the user review** in setup mode
-   before pressing Start playing.
+## Measured
 
-## The fork: screenshots vs photos of paper
+| | |
+|---|---|
+| Real phone screenshots (3 images, 117 digits) | 100% |
+| Photo of a printed puzzle, handheld, at an angle | 81/81 cells |
+| 60 synthetic boards in 12 fonts the bank has never seen | 98.7% per digit |
+| Grid found | 60/60 synthetic, 4/4 real |
+| Empty cell read as a digit | 0 |
+| Template bank | 40 KB |
+| Screenshot, no deskew needed | ~190 ms |
+| Photo needing deskew | ~2.4 s |
 
-**Screenshots of another sudoku app** are the easy case: axis aligned, clean,
-consistent glyph rendering, no shadows. Step 2 reduces to finding the strong grid
-lines, or even assuming a pre-cropped board. High accuracy is achievable.
+The uncertainty flag fires below a classifier margin of 4. Measured over 2140
+digits: wrong reads had a median margin of 2, correct reads 19. That threshold
+catches about 79% of misreads while marking 0.3% of correct cells. Raising it to
+10 catches every error but flags one cell in eight, which is worse than useless.
 
-**Photos of a newspaper** are a different problem: angle, page curvature, shadows,
-uneven light. Needs corner detection, a perspective warp and adaptive
-thresholding. Two routes:
+## What is still weak
 
-- `opencv.js` does all of it and costs about **8 MB**, which is roughly 45x the
-  current app size. Rejected on size unless there is no alternative.
-- **Hand-rolled homography**, about 150 lines of maths and no dependency. Finicky
-  to tune, but testable by generating synthetically warped boards and checking
-  they come back straight. This is the preferred route.
+Honest list, in rough order of what would bite first.
 
-**Recommendation: build screenshots first.** It gets most of the value for a
-fraction of the difficulty and produces a working pipeline to extend.
+- **Only rotation is corrected, not perspective.** A photo taken from a steep
+  angle, or of a curved page, still fails. Doing this properly needs a four
+  corner detection plus a homography warp, about 150 lines and testable by
+  generating synthetically warped boards. That is the obvious next piece.
+- **One paper photo in the corpus.** Everything about the print case is tuned
+  against a single image. Add more before trusting the numbers.
+- **Remaining confusions** on unseen fonts: 8 read as 6, 3 as 1, 4 as 1. Shipping
+  all 40 faces (the 98.7% figure withholds 12 of them) helps, but a handful
+  survive.
+- **Deskew costs about 2.4s** on a photo. Acceptable, not good. The angle search
+  re-runs full detection per candidate angle.
+- **A picture of graph paper is accepted as a grid** and read as 81 cells. All 81
+  come back flagged uncertain, so the safety net fires, but it does not refuse.
 
-## Recognition: do NOT use Tesseract
+## Things that were tried and did not work
 
-Tesseract.js is the obvious reach and the wrong tool here. It is built for lines
-of prose, it is mediocre on isolated characters in boxes, and its trained data is
-megabytes.
+Recorded so they are not retried.
 
-**Preferred: a purpose-built digit classifier.** Ten classes (blank plus 1-9), one
-narrow job.
+- **Dilating the template match** to tolerate stroke weight across typefaces:
+  accuracy fell from 97.1% to 82.0% and 6, 8 and 9 collapsed into each other,
+  because dilation fills the closed loops that distinguish them.
+- **Despeckling** the extracted ink, on the theory that paper texture fragments
+  the glyph: cost 1.6 points and fixed nothing. The cell in question turned out
+  to contain a perfectly clean digit.
+- **Flagging every rejected cell** for review: put 5 marks on a board that read
+  perfectly, because outline bleed and real pencil marks are rejected too and are
+  confidently not digits.
+- **Tesseract.js** was rejected before starting, on size and on being the wrong
+  tool for isolated characters in boxes. Nothing since has changed that.
 
-- Training data can be **generated synthetically**: render digits in many fonts,
-  sizes, blurs and noise levels. Standard approach for this exact problem, needs
-  no external dataset.
-- Result is a few hundred KB of weights plus about 100 lines of matrix maths to
-  run. No framework needed for a net this small.
-- Roughly 20x smaller than Tesseract with better accuracy on this task.
-- Prerequisite: a one-time offline training script. Python with numpy and Pillow
-  is already working on the dev machine (see the venv bootstrap note).
+## Non-obvious things worth keeping
 
-**Fallback for screenshots only:** plain template matching. Digits within one
-source are pixel consistent, so normalise each cell and correlate against
-templates for 1-9. Effective for clean screenshots, near useless for photos.
+- **Do not require all ten grid lines.** Only 8 of 10 survive any threshold that
+  separates lines from digits, because highlight bands lift the background under
+  the others.
+- **Measure a line by how far it reaches, not by its longest unbroken run.** A
+  highlight outline drawn across a grid line cuts it in half; it is still a line.
+- **A grid line is thin.** Without a thickness cap, a white modal sheet in a
+  screenshot registers as one 622px-thick "line" and drags the grid off the board.
+- **Pencil marks are separated from digits by interior row gaps**, not by ink
+  coverage or aspect. Over 340 digits and 172 note clusters the gap count gave
+  perfect separation at every cell size; coverage and aspect both overlapped.
+  Count interior gaps only: counting trailing empty rows rejects small cells.
+- **Both polarities everywhere.** A dark board draws its grid lines lighter than
+  its cells. Do not clamp the thresholds into range either: on a light board the
+  midtone IS the white background, and a clamped upper threshold then matches the
+  background and scores every row as a line.
 
-## What de-risks the whole feature
-
-**The app already has a solver, so it can check the OCR's work.** A scan that
-produces a board with no solution, or with many solutions, is almost certainly a
-misread. Combined with dropping the user into setup mode to review, with
-low-confidence cells flagged, the bar drops from "OCR must be perfect" to "OCR
-must save typing". Build it this way regardless of the recognition approach.
-
-## Size budget
-
-The app is about 183 KB today, and **143 KB of that is the embedded fonts**. The
-actual logic is around 40 KB. A 400 KB classifier takes the app to roughly 600 KB:
-still small, still instant, still fully offline. It is Tesseract or opencv.js that
-would break the self-contained property, not the feature itself.
-
-## Open decisions
-
-1. Screenshots only to begin with, or straight at photos of paper?
-2. Is roughly 600 KB acceptable for the finished app?
-
-## Related
-
-The explained-hint feature (see the hint engine in `index.html`) shares nothing
-with this except the validation step, so the two are independent.
+Development code, tests and the image corpus live in `.dev-ocr/`, which is
+gitignored because the corpus is personal phone photographs.
